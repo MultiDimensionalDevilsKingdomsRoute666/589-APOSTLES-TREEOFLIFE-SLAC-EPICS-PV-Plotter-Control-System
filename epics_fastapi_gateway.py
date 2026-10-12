@@ -23,6 +23,7 @@ from fastapi.responses import HTMLResponse
 from fastapi import Response
 import uvicorn
 
+from routers import config as config_router
 from caproto.asyncio.client import Context
 import numpy as np
 
@@ -119,6 +120,9 @@ app = FastAPI(
     redoc_url="/redoc",    # ReDoc endpoint
     lifespan=lifespan      # NEW: Use lifespan context manager
 )
+
+# Add routers 
+app.include_router(config_router.router)
 
 # Enable CORS to allow frontend applications from different origins
 app.add_middleware(

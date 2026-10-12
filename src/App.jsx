@@ -1,5 +1,6 @@
 // src/App.jsx
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePlotStore } from './stores/usePlotStore';
 import { useLiveValueStore } from "./stores/useLiveValueStore";
 import { pvConnectionPool } from "./services/PVConnectionPool";
@@ -132,7 +133,11 @@ function App() {
     (state) => state.removeLivePV
   );
 
+  const navigate = useNavigate();
 
+  const handleDirectToConfig = () => {
+    navigate('/config');
+  };
 
 
   useEffect(() => {
@@ -332,6 +337,12 @@ function App() {
               </select>
             </>
           )}
+	  <button
+	    className="btn btn-third"
+	    onClick={handleDirectToConfig}
+	  >
+		Configuratons
+	  </button>
         </div>
 
         {/* Collapsible Info Panel */}
@@ -362,9 +373,6 @@ function App() {
         <div style={{ flex: 1, overflow: 'auto' }}>
           <PlotGrid />
         </div>
-
-
-
 
 
         <div className="right-sidebar">

@@ -1,0 +1,13 @@
+{
+  "aliases": {
+    "BL22:SCAN:MASTER:ADC1": "I0",
+    "BL22:SCAN:MASTER:ADC2": "I1"
+  },
+  "layouts": {
+    "default": {
+      "plots": [],
+      "livePVNames": [],
+      "globalTimeWindow": 60
+    }
+  }
+}

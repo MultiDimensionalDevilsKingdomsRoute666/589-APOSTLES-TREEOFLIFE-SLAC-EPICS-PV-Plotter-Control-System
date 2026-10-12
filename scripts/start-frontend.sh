@@ -40,5 +40,5 @@ echo "=========================================="
 #    exec let npm process shell，used for  systemd to manage ongoing processes
 # ------------------------------------------------------------
 HOST="${HOST:-127.0.0.1}"
-PORT="${PORT:-5173}"
+PORT="${PORT:-5175}"
 exec npm run dev -- --host "$HOST" --port "$PORT"

@@ -10,12 +10,42 @@ import { PLOT_CONFIG, PLOT_LAYOUT_TEMPLATE, getPVColor } from "../utils/constant
 import { usePlotStore } from "../stores/usePlotStore";
 import "./MultiPVPlot.css";
 
+const API_BASE = `http://${window.location.hostname}:8000`;
+
 export default function MultiPVPlot({ plotId, pvNames }) {
   const SHOW_PV_TAGS = false;
 
   const [inputValue, setInputValue] = useState('');
+
   const [displayText, setDisplayText] = useState('');
-  
+ 
+  //Load Aliases and  EGU from backend
+  const [egus, setEgus] = useState({});
+  const [aliases, setAliases] = useState({});
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/egus`)
+      .then((res) => res.json())
+      .then((data) => setEgus(data || {}))
+      .catch((err) => console.error('Failed to load EGUs:', err));
+
+    fetch(`${API_BASE}/api/aliases`)
+      .then((res) => res.json())
+      .then((data) => setAliases(data || {}))
+      .catch((err) => console.error('Failed to load aliases:', err));
+  }, []);
+
+  //
+  const [showAlias, setShowAlias] = useState(false);
+  // Get the display name for a PV (alias if enabled and available, else raw name)
+  const getDisplayName = (pvName) => {
+    if (showAlias && aliases[pvName]) {
+      return aliases[pvName];      // show alias
+    }
+    return pvName;                  // show raw PV name
+  };
+
+
   const handleSubmit = () => {
     if (inputValue.trim() === '') return;
     setDisplayText(inputValue);
@@ -252,6 +282,17 @@ export default function MultiPVPlot({ plotId, pvNames }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const getYAxisTitle=()=>{
+    console.log('getYAxisTitle - egus:', egus, 'pvNames:', pvNames);
+    //Collect EGUs of this plot's PVs (ignore empty or default)
+    for (const pv of pvNames){
+      if (egus[pv] && egus[pv] !=='default'){
+	console.log('found EGU for', pv, ':', egus[pv]);
+        return egus[pv];
+      }	      
+    }	    
+    return "Value"; 
+  };
   // Effect 2: periodic plot redraw
   useEffect(() => {
     let updateCount = 0;
@@ -341,7 +382,8 @@ export default function MultiPVPlot({ plotId, pvNames }) {
 	    type: "scatter",
 	    //type: "scattergl",
             mode: "lines",
-            name: pvName,
+            name: getDisplayName(pvName),
+	    
             line: {
               width: 2,
               color: getTraceColor(pvName),
@@ -443,7 +485,7 @@ export default function MultiPVPlot({ plotId, pvNames }) {
   
       console.log("Plot update timer stopped");
     };
-  }, [pvNames, timeSyncEnabled, globalTimeWindow]);
+  }, [pvNames, timeSyncEnabled, globalTimeWindow, showAlias, aliases]);
 
 
 
@@ -466,10 +508,21 @@ export default function MultiPVPlot({ plotId, pvNames }) {
     ...PLOT_LAYOUT_TEMPLATE,//spread the shared default layout from constants.js
     datarevision: revision, //redraw signal: bump this to force Plotly to re-render
     showlegend: true, //show the legend
+    legend:{
+	    font:{size: 18},
+	    x:0,
+	    y:1,
+	    xanchor:'left',
+	    yanchor:'top',
+	    bgcolor:'255,255,255, 0.7',
+
+    },
     yaxis: {
       ...PLOT_LAYOUT_TEMPLATE.yaxis,
-      autorange: yAxisRange ? false : true,
+      //autorange: yAxisRange ? false : true,
+      autorange: true,
       range: yAxisRange,
+      title: {text: getYAxisTitle(),},
       exponentformat: "e",
       tickformat: ".2e",
     },
@@ -480,6 +533,7 @@ export default function MultiPVPlot({ plotId, pvNames }) {
       autorange: xAxisRange ? false : true,
       range: xAxisRange,
     },
+
     margin: { l: 85, r: 30, t: 10, b: 50 },
   };
 
@@ -512,7 +566,9 @@ export default function MultiPVPlot({ plotId, pvNames }) {
           </span>
         </div>
         */}
+        
         <div className="user-input">
+	  {/*
 	  {displayText ? displayText: <span style={{ color:'#999'}}> </span>}
 	  <input   
             type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)}
@@ -521,8 +577,17 @@ export default function MultiPVPlot({ plotId, pvNames }) {
 	  />
           <button className="enter-button" onClick={handleSubmit}>Enter</button>
 	  <button className="clear-button" onClick={handleClear}>Clear</button>
+	  */}
 	</div>  
-       
+        <div className="legend-toggle">
+          <button
+            className="btn btn-secondary" style = {{}}
+            onClick={() => setShowAlias((prev) => !prev)}
+            title="Toggle legend between alias and PV name"
+          >
+            {showAlias ? 'Show: Alias' : 'Show: PV Name'}
+          </button>
+        </div>       
 
 
         <div className="pv-tags">

@@ -100,3 +100,25 @@ async def delete_alias(pv_name: str):
     config.get("aliases", {}).pop(pv_name, None)
     save_config(config)
     return {"status": "ok"}
+
+@router.get("/egus")
+async def get_egus():
+    """get all EGU settings"""
+    return load_config().get("egus", {})
+
+
+class EguUpdate(BaseModel):
+    pv_name: str
+    egu: str
+
+
+@router.post("/egus")
+async def set_egu(update: EguUpdate):
+    """set/update a single PV's EGU"""
+    config = load_config()
+    config.setdefault("egus", {})
+    config["egus"][update.pv_name] = update.egu
+    save_config(config)
+    return {"status": "ok", "egus": config["egus"]}
+
+

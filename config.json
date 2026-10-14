@@ -1,7 +1,9 @@
 {
   "aliases": {
     "BL22:SCAN:MASTER:ADC1": "I0",
-    "BL22:SCAN:MASTER:ADC2": "I1"
+    "BL22:SCAN:MASTER:ADC2": "I1",
+    "BL22:SCAN:MASTER:ADC3": "I2",
+    "BL22:SCAN:MASTER:ADC4": "I3"
   },
   "layouts": {
     "default": {
@@ -9,5 +11,13 @@
       "livePVNames": [],
       "globalTimeWindow": 60
     }
+  },
+  "egus": {
+    "TEST:PV": "mm",
+    "BL22:SCAN:MASTER:ADC1": "Volts",
+    "BL22:SCAN:MASTER:ADC2": "Volts",
+    "BL22:SCAN:MASTER:MOTOR1.RBV": "Volts",
+    "BL22:SCAN:MASTER:ADC3": "Volts",
+    "BL22:SCAN:MASTER:ADC4": "Volts"
   }
 }

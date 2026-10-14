@@ -20,50 +20,55 @@ function ConfigPage() {
     new Set([...plotPVNames, ...livePVNames])
   );
 
-
-
-  //const inPlot = plotPVNames.includes(pvName);              // In Plot?
-  //const liveOnly = livePVNames.includes(pvName) && !inPlot; // Live Only
-
-
-
-
   // Alias state (loaded from backend)
   const [aliases, setAliases] = useState({});
+  
+  const [selectedEgus, setSelectedEgus] = useState({}); 
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState('');
 
+  const handleEguChange = (pvName, newEguValue) => {
+    setSelectedEgus((prevEgus) => ({
+      ...prevEgus,
+      [pvName]: newEguValue // Dynamically updates EGU for this specific PV
+    }));
+  };
 
 
-
-  // Load aliases from backend on page mount
+  // Load aliases and EGUs from backend on page mount
   useEffect(() => {
+    // Load aliases
     fetch(`${API_BASE}/api/aliases`)
       .then((res) => res.json())
+      .then((data) => setAliases(data || {}))
+      .catch((err) => console.error('Failed to load aliases:', err));
+  
+    // Load EGUs
+    fetch(`${API_BASE}/api/egus`)
+      .then((res) => res.json())
       .then((data) => {
-        setAliases(data || {});
+        setSelectedEgus(data || {});
         setLoading(false);
       })
       .catch((err) => {
-        console.error('Failed to load aliases:', err);
+        console.error('Failed to load EGUs:', err);
         setLoading(false);
       });
   }, []);
+
 
   // Update alias locally while typing
   const handleAliasChange = (pvName, newAlias) => {
     setAliases((prev) => ({ ...prev, [pvName]: newAlias }));
   };
 
-
-
-
-
   // Save aliases to backend
   // Backend expects one { pv_name, alias } per POST, so submit each entry
   const handleSave = async () => {
     try {
       setSaveStatus('Saving...');
+
+      //Save aliases
       for (const [pvName, alias] of Object.entries(aliases)) {
         if (!alias) continue; // skip empty aliases
         const res = await fetch(`${API_BASE}/api/aliases`, {
@@ -73,6 +78,17 @@ function ConfigPage() {
         });
         if (!res.ok) throw new Error('Save failed');
       }
+
+      //Save EGUS
+      for (const [pvName, egu] of Object.entries(selectedEgus)) {
+        if (!egu || egu === 'default') continue;
+        await fetch(`${API_BASE}/api/egus`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pv_name: pvName, egu }),
+        });
+      }
+
       setSaveStatus('Saved!');
       setTimeout(() => setSaveStatus(''), 2000);
     } catch (err) {
@@ -115,47 +131,47 @@ function ConfigPage() {
                   <th style={{ textAlign: 'left', padding: '8px', borderBottom: '2px solid #ccc' }}>
                     PV Name
                   </th>
-	          <th style={{ textAlign: 'center', padding: '8px', borderBottom: '2px solid #ccc' }}>
-              		In Plot?
-            	  </th>
-            	  <th style={{ textAlign: 'center', padding: '8px', borderBottom: '2px solid #ccc' }}>
-              		Live Only
-            	  </th>
+                  <th style={{ textAlign: 'center', padding: '8px', borderBottom: '2px solid #ccc' }}>
+                    In Plot?
+                  </th>
+                  <th style={{ textAlign: 'center', padding: '8px', borderBottom: '2px solid #ccc' }}>
+                    Live Only
+                  </th>
                   <th style={{ textAlign: 'left', padding: '8px', borderBottom: '2px solid #ccc' }}>
                     Alias (optional)
                   </th>
-		  <th style={{ textAlign: 'left', padding: '8px', borderBottom: '2px solid #ccc' }}>
+                  <th style={{ textAlign: 'left', padding: '8px', borderBottom: '2px solid #ccc' }}>
                     ????
-		  </th>
-		  <th style={{ textAlign: 'left', padding: '8px', borderBottom: '2px solid #ccc' }}>
-		    EGU
-		  </th>
+                  </th>
+                  <th style={{ textAlign: 'left', padding: '8px', borderBottom: '2px solid #ccc' }}>
+                    EGU
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {displayedPVNames.map((pvName) => {
-		  const inPlot = plotPVNames.includes(pvName);
-  		  const liveOnly = livePVNames.includes(pvName) && !inPlot;
-		  return (
+                  const inPlot = plotPVNames.includes(pvName);
+                  const liveOnly = livePVNames.includes(pvName) && !inPlot;
+                  return (
                     <tr key={pvName}>
-                      <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '8px', borderBottom: '2px solid #eee' }}>
                         {pvName}
                       </td>
-                      <td style={{ textAlign: 'center', padding: '8px', borderBottom: '1px solid #eee' }}>
+                      <td style={{ textAlign: 'center', padding: '8px', borderBottom: '2px solid #eee' }}>
                         {inPlot ? (
                           <span style={{ color: '#22c55e', fontSize: '18px' }}>✓</span>
                         ) : (
                           <span style={{ color: '#ef4444', fontSize: '18px' }}>✗</span>
                         )}
                       </td>
-                      <td style={{ textAlign: 'center', padding: '8px', borderBottom: '1px solid #eee' }}>
+                      <td style={{ textAlign: 'center', padding: '8px', borderBottom: '2px solid #eee' }}>
                         {liveOnly ? (
                           <span style={{ color: '#22c55e', fontSize: '18px' }}>✓</span>
                         ) : (
                           <span style={{ color: '#ef4444', fontSize: '18px' }}>✗</span>
                         )}
                       </td>
-                      <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '8px', borderBottom: '2px solid #eee' }}>
                         <input
                           type="text"
                           value={aliases[pvName] || ''}
@@ -164,21 +180,39 @@ function ConfigPage() {
                           style={{ width: '100%', padding: '4px' }}
                         />
                       </td>
-  		    <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
-  			place holder
-  	            </td>		
-  		    <td style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
-  			EGU (place holder)
-  	            </td>		
+                      <td style={{ padding: '8px', borderBottom: '2px solid #eee' }}>
+                        place holder
+                      </td>
+                      <td style={{ padding: '8px', borderBottom: '2px solid #eee' }}>
+			<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+			<span style={{ minWidth: '40px', color: '#666' }}>
+		      		{selectedEgus[pvName] && selectedEgus[pvName] !== 'default'
+		 	       ? selectedEgus[pvName]
+		        	: '—'}
+			</span>
+
+                        <select
+                          id={`egu-${pvName}`}
+                          value={selectedEgus[pvName] || 'default'}
+                          onChange={(e) => handleEguChange(pvName, e.target.value)}
+                          style={{ width: '100%', padding: '4px' }}
+                        > 
+                          <option value="default">default</option>
+                          <option value="mm">mm</option>
+                          <option value="deg">deg</option>
+                          <option value="Volts">Volts</option>
+                        </select>
+			</div>
+                      </td>
                     </tr>
-		  )		
-		})}
+                  )		
+                })}
               </tbody>
             </table>
 
             <div style={{ marginTop: '20px' }}>
               <button className="btn btn-primary" onClick={handleSave}>
-                Save Aliases
+                Save Configs
               </button>
               {saveStatus && (
                 <span style={{ marginLeft: '10px' }}>{saveStatus}</span>
@@ -192,3 +226,4 @@ function ConfigPage() {
 }
 
 export default ConfigPage;
+

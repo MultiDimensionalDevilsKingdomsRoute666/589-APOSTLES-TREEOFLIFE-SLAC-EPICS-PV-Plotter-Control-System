@@ -121,4 +121,21 @@ async def set_egu(update: EguUpdate):
     save_config(config)
     return {"status": "ok", "egus": config["egus"]}
 
+class LayoutUpdate(BaseModel):
+    plots: list
+    livePVNames: list
+    globalTimeWindow: int
 
+
+@router.get("/layout")
+async def get_layout():
+    return load_config().get("layouts", {}).get("default", {})
+
+
+@router.post("/layout")
+async def save_layout(layout: LayoutUpdate):
+    config = load_config()                        #
+    config.setdefault("layouts", {})
+    config["layouts"]["default"] = layout.dict()  #  layouts
+    save_config(config)                           # aliases/egus
+    return {"status": "ok"}

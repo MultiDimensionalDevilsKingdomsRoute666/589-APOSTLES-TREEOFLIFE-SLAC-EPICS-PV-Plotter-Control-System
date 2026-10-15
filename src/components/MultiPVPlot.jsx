@@ -36,7 +36,7 @@ export default function MultiPVPlot({ plotId, pvNames }) {
   }, []);
 
   //
-  const [showAlias, setShowAlias] = useState(false);
+  const [showAlias, setShowAlias] = useState(true);
   // Get the display name for a PV (alias if enabled and available, else raw name)
   const getDisplayName = (pvName) => {
     if (showAlias && aliases[pvName]) {
@@ -585,7 +585,7 @@ export default function MultiPVPlot({ plotId, pvNames }) {
             onClick={() => setShowAlias((prev) => !prev)}
             title="Toggle legend between alias and PV name"
           >
-            {showAlias ? 'Show: Alias' : 'Show: PV Name'}
+            {showAlias ? 'Show PV Names' : 'Show Aliases'}
           </button>
         </div>       
 

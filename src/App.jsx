@@ -9,6 +9,7 @@ import PlotGrid from './components/PlotGrid';
 import { Plus, Trash2, Activity, Clock, ChevronDown, ChevronUp, X } from 'lucide-react';
 import './App.css';
 
+const API_BASE = `http://${window.location.hostname}:8000`;
 
 function LivePVValue({
   pvName,
@@ -99,8 +100,11 @@ function App() {
   const handlePlotSizeChange = (event) => {
     setSelectedPlotSize(event.target.value);
   };
-
-
+  const [saveStatus, setSaveStatus] = useState('');
+	
+  const handleSavePlotConfigBk = (event) =>{
+    console.log("save the plots configuration");
+  };
   const plots = usePlotStore((state) => state.plots);
   const addPlot = usePlotStore((state) => state.addPlot);
   const clearAll = usePlotStore((state) => state.clearAll);
@@ -137,6 +141,31 @@ function App() {
 
   const handleDirectToConfig = () => {
     navigate('/config');
+  };
+
+  const handleSavePlotConfig = async () => {
+    try {
+      console.log("saving the plot configurations")
+      setSaveStatus('Saving...');
+
+      //Save Plot Layouts
+    
+      const res = await fetch(`${API_BASE}/api/layout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plots: plots,
+          livePVNames: livePVNames,
+          globalTimeWindow: globalTimeWindow,
+        }),
+      });
+      if (!res.ok) throw new Error('Save failed');
+      setSaveStatus('Saved!');
+      setTimeout(() => setSaveStatus(''), 2000);
+    } catch (err) {
+      console.error(err);
+      setSaveStatus('Save failed');
+    }
   };
 
 
@@ -341,8 +370,19 @@ function App() {
 	    className="btn btn-third"
 	    onClick={handleDirectToConfig}
 	  >
-		Configuratons
+		PV Configurations
 	  </button>
+	  <div>
+	    <button
+	      className="btn btn-fourth"
+	      onClick={handleSavePlotConfig}
+	    >
+	      Save Plot Configurations
+	    </button>
+              {saveStatus && (
+                <span style={{ marginLeft: '10px' }}>{saveStatus}</span>
+              )}
+          </div> 
         </div>
 
         {/* Collapsible Info Panel */}

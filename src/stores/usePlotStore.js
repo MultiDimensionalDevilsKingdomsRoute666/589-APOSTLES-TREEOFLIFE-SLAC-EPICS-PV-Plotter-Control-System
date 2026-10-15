@@ -1,10 +1,7 @@
 // src/stores/usePlotStore.js
 
 import { create } from "zustand";
-import {
-  persist,
-  createJSONStorage,
-} from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 import { PLOT_CONFIG } from "../utils/constants";
 
@@ -14,8 +11,8 @@ export const usePlotStore = create(
   persist(
     (set, get) => ({
       plots: [],
-      
-      //PVs explicitly added to the Live PV Values list	    
+
+      //PVs explicitly added to the Live PV Values list
       livePVNames: [],
 
       // Time synchronization settings
@@ -28,11 +25,7 @@ export const usePlotStore = create(
           timeSyncEnabled: !state.timeSyncEnabled,
         }));
 
-        console.log(
-          `Time sync: ${
-            get().timeSyncEnabled ? "ON" : "OFF"
-          }`
-        );
+        console.log(`Time sync: ${get().timeSyncEnabled ? "ON" : "OFF"}`);
       },
 
       // Set the global time window in seconds
@@ -41,32 +34,26 @@ export const usePlotStore = create(
           globalTimeWindow: seconds,
         });
 
-        console.log(
-          `Time window set to: ${seconds}s`
-        );
+        console.log(`Time window set to: ${seconds}s`);
       },
 
       // Add a new plot and calculate its initial position
       addPlot: (pvNames, width, height) => {
         const currentPlots = get().plots;
 
-        const newPlotWidth =
-          PLOT_CONFIG.DEFAULT_WIDTH * width;
+        const newPlotWidth = PLOT_CONFIG.DEFAULT_WIDTH * width;
 
-        const newPlotHeight =
-          PLOT_CONFIG.DEFAULT_HEIGHT * height;
+        const newPlotHeight = PLOT_CONFIG.DEFAULT_HEIGHT * height;
 
         const position = findBestPosition(
           currentPlots,
           newPlotWidth,
-          newPlotHeight
+          newPlotHeight,
         );
 
         const newPlot = {
           id: nextPlotId++,
-          pvNames: Array.isArray(pvNames)
-            ? pvNames
-            : [pvNames],
+          pvNames: Array.isArray(pvNames) ? pvNames : [pvNames],
           x: position.x,
           y: position.y,
           w: newPlotWidth,
@@ -80,7 +67,7 @@ export const usePlotStore = create(
         console.log(
           `Plot added at (${newPlot.x}, ${newPlot.y}), ` +
             `size: ${newPlot.w}x${newPlot.h}`,
-          newPlot
+          newPlot,
         );
       },
 
@@ -90,62 +77,54 @@ export const usePlotStore = create(
           new Set(
             (Array.isArray(pvNames) ? pvNames : [pvNames])
               .map((pvName) => pvName.trim())
-              .filter(Boolean)
-          )
+              .filter(Boolean),
+          ),
         );
-      
+
         if (normalizedNames.length === 0) {
           return;
         }
-      
+
         const currentNames = get().livePVNames;
-      
+
         const nextNames = Array.from(
-          new Set([...currentNames, ...normalizedNames])
+          new Set([...currentNames, ...normalizedNames]),
         );
-      
+
         if (nextNames.length === currentNames.length) {
           return;
         }
-      
+
         set({
           livePVNames: nextNames,
         });
       },
-      
+
       // Remove a PV from the explicit Live PV Values list.
       removeLivePV: (pvName) => {
         const currentNames = get().livePVNames;
-      
+
         if (!currentNames.includes(pvName)) {
           return;
         }
-      
+
         set({
-          livePVNames: currentNames.filter(
-            (name) => name !== pvName
-          ),
+          livePVNames: currentNames.filter((name) => name !== pvName),
         });
       },
-
-
 
       // Remove an entire plot
       removePlot: (plotId) => {
         const currentPlots = get().plots;
 
-        const plotExists = currentPlots.some(
-          (plot) => plot.id === plotId
-        );
+        const plotExists = currentPlots.some((plot) => plot.id === plotId);
 
         if (!plotExists) {
           return;
         }
 
         set({
-          plots: currentPlots.filter(
-            (plot) => plot.id !== plotId
-          ),
+          plots: currentPlots.filter((plot) => plot.id !== plotId),
         });
 
         console.log(`Plot removed: ${plotId}`);
@@ -168,9 +147,7 @@ export const usePlotStore = create(
 
             changed = true;
 
-            const updatedPVs = plot.pvNames.filter(
-              (pv) => pv !== pvName
-            );
+            const updatedPVs = plot.pvNames.filter((pv) => pv !== pvName);
 
             if (updatedPVs.length === 0) {
               return null;
@@ -191,9 +168,7 @@ export const usePlotStore = create(
           plots: nextPlots,
         });
 
-        console.log(
-          `PV removed: ${pvName} from plot ${plotId}`
-        );
+        console.log(`PV removed: ${pvName} from plot ${plotId}`);
       },
 
       // Update plot positions and sizes only when the layout changed
@@ -204,19 +179,12 @@ export const usePlotStore = create(
           return;
         }
 
-        const layoutMap = new Map(
-          newLayout.map((item) => [
-            item.i,
-            item,
-          ])
-        );
+        const layoutMap = new Map(newLayout.map((item) => [item.i, item]));
 
         let changed = false;
 
         const nextPlots = currentPlots.map((plot) => {
-          const layoutItem = layoutMap.get(
-            plot.id.toString()
-          );
+          const layoutItem = layoutMap.get(plot.id.toString());
 
           if (!layoutItem) {
             return plot;
@@ -252,21 +220,45 @@ export const usePlotStore = create(
           plots: nextPlots,
         });
       },
+      // Load a complete layout from backend (replaces current plots)
+      loadLayout: (layout) => {
+        console.log("loading layout with plots number ", layout.length);
+        if (!layout) {
+          return;
+        }
+
+        const plots = Array.isArray(layout.plots) ? layout.plots : [];
+        const livePVNames = Array.isArray(layout.livePVNames)
+          ? layout.livePVNames
+          : [];
+
+        set({
+          plots: plots,
+          livePVNames: livePVNames,
+          globalTimeWindow: layout.globalTimeWindow || 60,
+        });
+
+        // Update nextPlotId to avoid ID conflicts
+        //const maxId = plots.reduce(
+        //  (max, plot) => Math.max(max, plot.id || 0),
+        //  0
+        //);
+        //nextPlotId = maxId + 1;
+
+        console.log(`Layout loaded: ${plots.length} plots`);
+      },
 
       // Remove all plots
       clearAll: () => {
-	const state = get();
-	      
-        if (
-	  state.plots.length === 0 &&
-          state.livePVNames.length === 0
-	) {
+        const state = get();
+
+        if (state.plots.length === 0 && state.livePVNames.length === 0) {
           return;
         }
 
         set({
           plots: [],
-	  livePVNames: [],
+          livePVNames: [],
         });
 
         nextPlotId = 1;
@@ -277,9 +269,7 @@ export const usePlotStore = create(
     {
       name: "epics-plot-storage",
 
-      storage: createJSONStorage(
-        () => localStorage
-      ),
+      storage: createJSONStorage(() => localStorage),
 
       // Restore the next available plot ID after page reload
       onRehydrateStorage: () => (state) => {
@@ -287,47 +277,35 @@ export const usePlotStore = create(
           return;
         }
 
-        const restoredPlots = Array.isArray(
-          state.plots
-        )
-          ? state.plots
-          : [];
+        const restoredPlots = Array.isArray(state.plots) ? state.plots : [];
 
         const maxId = restoredPlots.reduce(
-          (maximumId, plot) =>
-            Math.max(maximumId, plot.id),
-          0
+          (maximumId, plot) => Math.max(maximumId, plot.id),
+          0,
         );
 
         nextPlotId = maxId + 1;
 
         console.log(
-          `State rehydrated: ` +
-            `${restoredPlots.length} plots restored`
+          `State rehydrated: ` + `${restoredPlots.length} plots restored`,
         );
 
-        console.log(
-          `Next plot ID will be: ${nextPlotId}`
-        );
+        console.log(`Next plot ID will be: ${nextPlotId}`);
       },
 
       // Persist only configuration data
       partialize: (state) => ({
         plots: state.plots,
-	livePVNames: state.livePVNames,
+        livePVNames: state.livePVNames,
         //timeSyncEnabled: state.timeSyncEnabled,
         globalTimeWindow: state.globalTimeWindow,
       }),
-    }
-  )
+    },
+  ),
 );
 
 // Find an available position for a new plot
-function findBestPosition(
-  existingPlots,
-  width,
-  height
-) {
+function findBestPosition(existingPlots, width, height) {
   if (existingPlots.length === 0) {
     return {
       x: 0,
@@ -339,28 +317,23 @@ function findBestPosition(
   let currentRow = 0;
 
   while (true) {
-    for (
-      let column = 0;
-      column <= gridColumns - width;
-      column += 1
-    ) {
+    for (let column = 0; column <= gridColumns - width; column += 1) {
       const candidate = {
         x: column,
         y: currentRow,
       };
 
-      const hasConflict = existingPlots.some(
-        (plot) =>
-          rectanglesOverlap(
-            candidate.x,
-            candidate.y,
-            width,
-            height,
-            plot.x,
-            plot.y,
-            plot.w,
-            plot.h
-          )
+      const hasConflict = existingPlots.some((plot) =>
+        rectanglesOverlap(
+          candidate.x,
+          candidate.y,
+          width,
+          height,
+          plot.x,
+          plot.y,
+          plot.w,
+          plot.h,
+        ),
       );
 
       if (!hasConflict) {
@@ -373,7 +346,7 @@ function findBestPosition(
     if (currentRow > 100) {
       console.warn(
         "Could not find an available position; " +
-          "placing the plot at the end"
+          "placing the plot at the end",
       );
 
       return {
@@ -385,16 +358,7 @@ function findBestPosition(
 }
 
 // Check whether two grid rectangles overlap
-function rectanglesOverlap(
-  x1,
-  y1,
-  width1,
-  height1,
-  x2,
-  y2,
-  width2,
-  height2
-) {
+function rectanglesOverlap(x1, y1, width1, height1, x2, y2, width2, height2) {
   return !(
     x1 + width1 <= x2 ||
     x2 + width2 <= x1 ||

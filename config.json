@@ -3,21 +3,73 @@
     "BL22:SCAN:MASTER:ADC1": "I0",
     "BL22:SCAN:MASTER:ADC2": "I1",
     "BL22:SCAN:MASTER:ADC3": "I2",
-    "BL22:SCAN:MASTER:ADC4": "I3"
+    "BL22:SCAN:MASTER:ADC4": "FY"
+  },
+  "egus": {
+    "BL22:SCAN:MASTER:ADC1": "Volts",
+    "BL22:SCAN:MASTER:ADC2": "Volts",
+    "BL22:SCAN:MASTER:ADC4": "Volts",
+    "BL22:SCAN:MASTER:ADC3": "Volts"
   },
   "layouts": {
     "default": {
-      "plots": [],
+      "plots": [
+        {
+          "id": 1,
+          "pvNames": [
+            "BL22:SCAN:MASTER:ADC1"
+          ],
+          "x": 0,
+          "y": 0,
+          "w": 4,
+          "h": 3
+        },
+        {
+          "id": 2,
+          "pvNames": [
+            "BL22:SCAN:MASTER:ADC2"
+          ],
+          "x": 4,
+          "y": 0,
+          "w": 4,
+          "h": 3
+        },
+        {
+          "id": 3,
+          "pvNames": [
+            "BL22:SCAN:MASTER:ADC3"
+          ],
+          "x": 8,
+          "y": 0,
+          "w": 4,
+          "h": 3
+        },
+        {
+          "id": 4,
+          "pvNames": [
+            "BL22:SCAN:MASTER:ADC4"
+          ],
+          "x": 0,
+          "y": 3,
+          "w": 4,
+          "h": 3
+        },
+        {
+          "id": 5,
+          "pvNames": [
+            "BL22:SCAN:MASTER:ADC1",
+            "BL22:SCAN:MASTER:ADC2",
+            "BL22:SCAN:MASTER:ADC3",
+            "BL22:SCAN:MASTER:ADC4"
+          ],
+          "x": 4,
+          "y": 3,
+          "w": 4,
+          "h": 3
+        }
+      ],
       "livePVNames": [],
-      "globalTimeWindow": 60
+      "globalTimeWindow": 120
     }
-  },
-  "egus": {
-    "TEST:PV": "mm",
-    "BL22:SCAN:MASTER:ADC1": "Volts",
-    "BL22:SCAN:MASTER:ADC2": "Volts",
-    "BL22:SCAN:MASTER:MOTOR1.RBV": "Volts",
-    "BL22:SCAN:MASTER:ADC3": "Volts",
-    "BL22:SCAN:MASTER:ADC4": "Volts"
   }
 }

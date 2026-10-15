@@ -112,3 +112,11 @@
   font-size: 0.9rem;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
+
+.btn-load-config {
+  background: linear-gradient(135deg, #66CC99 0%, #99cc99 100%);
+  padding: 1.rem;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}

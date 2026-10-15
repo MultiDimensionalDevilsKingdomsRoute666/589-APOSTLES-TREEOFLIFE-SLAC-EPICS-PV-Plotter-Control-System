@@ -222,6 +222,19 @@ html, body {
   color: #2c3e50;
 }
 
+
+/* Third Button(PV Configurations) */
+.btn-third {
+  background: linear-gradient(to bottom, #66FF99, #33cc66); 
+  box-shadow: 0 4px 15px rgba(42, 245, 152, 0.3); 
+}
+
+/* Fourth Button(Plot Configurations) */
+.btn-fourth {
+  background: linear-gradient(to bottom, #99cc99, #669966); 
+}
+
+
 .btn-secondary:hover:not(:disabled) {
   background: linear-gradient(135deg, #656d82 0%, #c5cbd6 100%);
   transform: translateY(-2px);

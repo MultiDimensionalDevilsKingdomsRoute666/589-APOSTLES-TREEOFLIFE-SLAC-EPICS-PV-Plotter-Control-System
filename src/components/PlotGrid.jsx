@@ -56,7 +56,7 @@ export default function PlotGrid() {
       console.error("Failed to load configuration:", error.message);
     }
   };
-
+  //if not plots, show the default panel
   if (plots.length === 0) {
     return (
       <div className="plot-grid-container">

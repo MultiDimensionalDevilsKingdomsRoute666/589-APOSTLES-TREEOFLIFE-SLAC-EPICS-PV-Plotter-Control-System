@@ -6,7 +6,7 @@
     "BL22:SCAN:MASTER:ADC4": "FY"
   },
   "egus": {
-    "BL22:SCAN:MASTER:ADC1": "Volts",
+    "BL22:SCAN:MASTER:ADC1": "mm",
     "BL22:SCAN:MASTER:ADC2": "Volts",
     "BL22:SCAN:MASTER:ADC4": "Volts",
     "BL22:SCAN:MASTER:ADC3": "Volts"
@@ -25,19 +25,9 @@
           "h": 3
         },
         {
-          "id": 2,
+          "id": 4,
           "pvNames": [
-            "BL22:SCAN:MASTER:ADC2"
-          ],
-          "x": 4,
-          "y": 0,
-          "w": 4,
-          "h": 3
-        },
-        {
-          "id": 3,
-          "pvNames": [
-            "BL22:SCAN:MASTER:ADC3"
+            "BL22:SCAN:MASTER:ADC4"
           ],
           "x": 8,
           "y": 0,
@@ -45,9 +35,19 @@
           "h": 3
         },
         {
-          "id": 4,
+          "id": 6,
           "pvNames": [
-            "BL22:SCAN:MASTER:ADC4"
+            "BL22:SCAN:MASTER:ADC3"
+          ],
+          "x": 4,
+          "y": 0,
+          "w": 4,
+          "h": 3
+        },
+        {
+          "id": 9,
+          "pvNames": [
+            "BL22:SCAN:MASTER:ADC6"
           ],
           "x": 0,
           "y": 3,
@@ -55,20 +55,21 @@
           "h": 3
         },
         {
-          "id": 5,
+          "id": 10,
           "pvNames": [
             "BL22:SCAN:MASTER:ADC1",
             "BL22:SCAN:MASTER:ADC2",
-            "BL22:SCAN:MASTER:ADC3",
-            "BL22:SCAN:MASTER:ADC4"
+            "BL22:SCAN:MASTER:ADC3"
           ],
           "x": 4,
           "y": 3,
-          "w": 4,
+          "w": 8,
           "h": 3
         }
       ],
-      "livePVNames": [],
+      "livePVNames": [
+        "BL22:SCAN:MASTER:MOTOR4.REP"
+      ],
       "globalTimeWindow": 120
     }
   }

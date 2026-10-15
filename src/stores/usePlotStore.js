@@ -5,7 +5,17 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 import { PLOT_CONFIG } from "../utils/constants";
 
-let nextPlotId = 1;
+// Compute the next plot id from the plots actually present right now,
+// rather than tracking a separate counter that can drift out of sync
+// whenever plots are set via a path other than addPlot (loadLayout,
+// localStorage rehydration, etc).
+function getNextPlotId(plots) {
+  const maxId = plots.reduce(
+    (max, plot) => Math.max(max, plot.id || 0),
+    0,
+  );
+  return maxId + 1;
+}
 
 export const usePlotStore = create(
   persist(
@@ -52,7 +62,7 @@ export const usePlotStore = create(
         );
 
         const newPlot = {
-          id: nextPlotId++,
+          id: getNextPlotId(currentPlots),
           pvNames: Array.isArray(pvNames) ? pvNames : [pvNames],
           x: position.x,
           y: position.y,
@@ -113,7 +123,8 @@ export const usePlotStore = create(
         });
       },
 
-      // Remove an entire plot
+      // Remove an entire plot, then repack the remaining plots so no
+      // gap is left behind (see repackPlots below)
       removePlot: (plotId) => {
         const currentPlots = get().plots;
 
@@ -123,8 +134,12 @@ export const usePlotStore = create(
           return;
         }
 
+        const remainingPlots = currentPlots.filter(
+          (plot) => plot.id !== plotId,
+        );
+
         set({
-          plots: currentPlots.filter((plot) => plot.id !== plotId),
+          plots: repackPlots(remainingPlots),
         });
 
         console.log(`Plot removed: ${plotId}`);
@@ -164,8 +179,12 @@ export const usePlotStore = create(
           return;
         }
 
+        // If removing the PV emptied out and deleted a whole plot,
+        // repack the rest so no gap is left behind.
+        const plotWasRemoved = nextPlots.length < currentPlots.length;
+
         set({
-          plots: nextPlots,
+          plots: plotWasRemoved ? repackPlots(nextPlots) : nextPlots,
         });
 
         console.log(`PV removed: ${pvName} from plot ${plotId}`);
@@ -238,13 +257,6 @@ export const usePlotStore = create(
           globalTimeWindow: layout.globalTimeWindow || 60,
         });
 
-        // Update nextPlotId to avoid ID conflicts
-        //const maxId = plots.reduce(
-        //  (max, plot) => Math.max(max, plot.id || 0),
-        //  0
-        //);
-        //nextPlotId = maxId + 1;
-
         console.log(`Layout loaded: ${plots.length} plots`);
       },
 
@@ -261,8 +273,6 @@ export const usePlotStore = create(
           livePVNames: [],
         });
 
-        nextPlotId = 1;
-
         console.log("All plots and live PVs cleared");
       },
     }),
@@ -271,7 +281,6 @@ export const usePlotStore = create(
 
       storage: createJSONStorage(() => localStorage),
 
-      // Restore the next available plot ID after page reload
       onRehydrateStorage: () => (state) => {
         if (!state) {
           return;
@@ -279,18 +288,9 @@ export const usePlotStore = create(
 
         const restoredPlots = Array.isArray(state.plots) ? state.plots : [];
 
-        const maxId = restoredPlots.reduce(
-          (maximumId, plot) => Math.max(maximumId, plot.id),
-          0,
-        );
-
-        nextPlotId = maxId + 1;
-
         console.log(
           `State rehydrated: ` + `${restoredPlots.length} plots restored`,
         );
-
-        console.log(`Next plot ID will be: ${nextPlotId}`);
       },
 
       // Persist only configuration data
@@ -303,6 +303,29 @@ export const usePlotStore = create(
     },
   ),
 );
+
+// Re-lay out plots in reading order (top-to-bottom, left-to-right) using
+// the same bin-packing scan as addPlot, so removing one doesn't leave a
+// gap in the middle of a row/column — it reflows everything after it.
+function repackPlots(plots) {
+  const readingOrder = [...plots].sort(
+    (a, b) => a.y - b.y || a.x - b.x,
+  );
+
+  const placed = [];
+  const positionById = new Map();
+
+  readingOrder.forEach((plot) => {
+    const position = findBestPosition(placed, plot.w, plot.h);
+    placed.push({ ...plot, x: position.x, y: position.y });
+    positionById.set(plot.id, position);
+  });
+
+  return plots.map((plot) => ({
+    ...plot,
+    ...positionById.get(plot.id),
+  }));
+}
 
 // Find an available position for a new plot
 function findBestPosition(existingPlots, width, height) {

@@ -182,15 +182,6 @@ function ConfigPage() {
                       borderBottom: "2px solid #ccc",
                     }}
                   >
-                    ????
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: "8px",
-                      borderBottom: "2px solid #ccc",
-                    }}
-                  >
                     EGU
                   </th>
                 </tr>
@@ -265,14 +256,6 @@ function ConfigPage() {
                           borderBottom: "2px solid #eee",
                         }}
                       >
-                        place holder
-                      </td>
-                      <td
-                        style={{
-                          padding: "8px",
-                          borderBottom: "2px solid #eee",
-                        }}
-                      >
                         <div
                           style={{
                             display: "flex",
@@ -295,7 +278,7 @@ function ConfigPage() {
                             }
                             style={{ width: "100%", padding: "4px" }}
                           >
-                            <option value="default">default</option>
+                            <option value="default">Arb.</option>
                             <option value="mm">mm</option>
                             <option value="deg">deg</option>
                             <option value="Volts">Volts</option>

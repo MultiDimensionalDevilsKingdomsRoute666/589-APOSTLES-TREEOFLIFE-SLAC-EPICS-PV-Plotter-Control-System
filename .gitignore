@@ -38,3 +38,10 @@ npm-debug.log*
 # Temporary files
 *.tmp
 .cache/
+
+# Test output
+playwright-report/
+test-results/
+
+# NFS silly-rename files
+.nfs*

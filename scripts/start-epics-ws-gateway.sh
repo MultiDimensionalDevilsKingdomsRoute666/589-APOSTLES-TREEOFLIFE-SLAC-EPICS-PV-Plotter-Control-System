@@ -15,5 +15,3 @@ export EPICS_PVA_AUTO_ADDR_LIST=YES
 # Use the virtual environment's Python directly
 exec /home/b_bluesky/Documents/epics-pv-plotter/venv_prodlx1_py311/bin/python /home/b_bluesky/Documents/epics-pv-plotter/epics_fastapi_gateway.py
 
-#exec /home/b_bluesky/Documents/epics-pv-plotter/venv_prodlx1_py311/bin/python /home/b_bluesky/Documents/epics-pv-plotter/epics-ws-gateway-caproto-sec.py
-#exec /home/b_bluesky/Documents/epics-pv-plotter/venv/bin/python /home/b_bluesky/Documents/epics-pv-plotter/epics-ws-gateway.py

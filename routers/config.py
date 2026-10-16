@@ -4,6 +4,7 @@ Configuration API router - handles shared aliases and layouts.
 Stored in config.json so all browsers share the same settings.
 """
 
+import errno
 import json
 import logging
 from pathlib import Path
@@ -49,7 +50,18 @@ def save_config(config: dict) -> None:
     try:
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
-        tmp.replace(CONFIG_FILE)   # replace the old configuration file
+
+        try:
+            tmp.replace(CONFIG_FILE)   # replace the old configuration file
+        except OSError as e:
+            if e.errno != errno.EBUSY:
+                raise
+            # CONFIG_FILE is a bind-mounted single file (e.g. Docker's
+            # `volumes: - ./config.json:/app/config.json`), which can't be
+            # atomically replaced via rename - write in place instead.
+            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+            tmp.unlink(missing_ok=True)
     except IOError as e:
         log.error(f"Failed to save config: {e}")
         raise HTTPException(status_code=500, detail="Failed to save config")

@@ -114,6 +114,7 @@ export default function PlotGrid() {
           updateLayout(newLayout);
         }}
         draggableHandle=".plot-header"
+        draggableCancel="button"
         compactType="vertical"
         preventCollision={false}
         isDraggable={true}

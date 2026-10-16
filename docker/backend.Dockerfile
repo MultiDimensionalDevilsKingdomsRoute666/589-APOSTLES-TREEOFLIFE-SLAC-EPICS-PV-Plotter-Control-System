@@ -13,6 +13,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY epics_fastapi_gateway.py ./
 COPY routers ./routers
 
+# docker-compose.yml may run this container as an arbitrary host uid (to
+# satisfy NFS permissions on a bind-mounted config.json) rather than root,
+# so /app - owned by root at this point - needs to stay writable for the
+# config.json.tmp temp file used when saving config.
+RUN chmod 777 /app
+
 EXPOSE 8000
 
 CMD ["python", "epics_fastapi_gateway.py"]

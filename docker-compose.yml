@@ -10,6 +10,12 @@ services:
     # bridge network. This also lets the frontend container reach the
     # backend at 127.0.0.1:8000 without any Docker DNS/port mapping.
     network_mode: host
+    # Defaults to root. If config.json lives on an NFS-mounted home
+    # directory, NFS typically "root-squashes" the container's root user,
+    # so it can't write a file owned by your real account - set APP_UID/
+    # APP_GID (e.g. in .env, from `id -u`/`id -g`) to your host user in
+    # that case. Not needed for a local disk (e.g. a Raspberry Pi SD card).
+    user: "${APP_UID:-0}:${APP_GID:-0}"
     environment:
       - EPICS_CA_AUTO_ADDR_LIST=${EPICS_CA_AUTO_ADDR_LIST:-YES}
       - EPICS_CA_ADDR_LIST=${EPICS_CA_ADDR_LIST:-}

@@ -6,7 +6,11 @@ import { X, Wifi, WifiOff, AlertCircle, Download } from "lucide-react";
 import { DataBuffer } from "../services/DataBuffer";
 import { pvConnectionPool } from "../services/PVConnectionPool";
 
-import { PLOT_CONFIG, PLOT_LAYOUT_TEMPLATE, getPVColor } from "../utils/constants";
+import {
+  PLOT_CONFIG,
+  PLOT_LAYOUT_TEMPLATE,
+  getPVColor,
+} from "../utils/constants";
 import { usePlotStore } from "../stores/usePlotStore";
 import "./MultiPVPlot.css";
 
@@ -16,10 +20,10 @@ const API_BASE = "";
 export default function MultiPVPlot({ plotId, pvNames }) {
   const SHOW_PV_TAGS = false;
 
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
 
-  const [displayText, setDisplayText] = useState('');
- 
+  const [displayText, setDisplayText] = useState("");
+
   //Load Aliases and  EGU from backend
   const [egus, setEgus] = useState({});
   const [aliases, setAliases] = useState({});
@@ -28,12 +32,12 @@ export default function MultiPVPlot({ plotId, pvNames }) {
     fetch(`${API_BASE}/api/egus`)
       .then((res) => res.json())
       .then((data) => setEgus(data || {}))
-      .catch((err) => console.error('Failed to load EGUs:', err));
+      .catch((err) => console.error("Failed to load EGUs:", err));
 
     fetch(`${API_BASE}/api/aliases`)
       .then((res) => res.json())
       .then((data) => setAliases(data || {}))
-      .catch((err) => console.error('Failed to load aliases:', err));
+      .catch((err) => console.error("Failed to load aliases:", err));
   }, []);
 
   //
@@ -41,60 +45,80 @@ export default function MultiPVPlot({ plotId, pvNames }) {
   // Get the display name for a PV (alias if enabled and available, else raw name)
   const getDisplayName = (pvName) => {
     if (showAlias && aliases[pvName]) {
-      return aliases[pvName];      // show alias
+      return aliases[pvName]; // show alias
     }
-    return pvName;                  // show raw PV name
+    return pvName; // show raw PV name
   };
 
+  // Plotly legend text is rendered as SVG, so a React icon component can't
+  // be placed in it - a colored dot glyph is used instead, matching the
+  // colors used by the (hidden) HTML status icons below.
+  const getStatusGlyph = (status) => {
+    switch (status) {
+      case "connected":
+        return "🟢";
+      case "error":
+        return "🔴";
+      default:
+        return "🟡";
+    }
+  };
+
+  const buildTraceName = (pvName, status) =>
+    `${getDisplayName(pvName)} ${getStatusGlyph(status)}`;
 
   const handleSubmit = () => {
-    if (inputValue.trim() === '') return;
+    if (inputValue.trim() === "") return;
     setDisplayText(inputValue);
-    setInputValue(''); //Empty input box
-    console.log('entered the value', inputValue);
-  };	  
+    setInputValue(""); //Empty input box
+    console.log("entered the value", inputValue);
+  };
 
   const handleClear = () => {
-    setDisplayText('');
-    setInputValue('');
-    console.log('cleared the value');
+    setDisplayText("");
+    setInputValue("");
+    console.log("cleared the value");
   };
-  const handleKeyDown = (e) =>{
-    if (e.key === 'Enter'){
-	    handleSubmit();
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleSubmit();
     }
   };
-  
+
   const [plotData, setPlotData] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState({});
+  // Mirrors connectionStatus for the periodic redraw effect below, which
+  // intentionally doesn't depend on connectionStatus (to avoid restarting
+  // its timer on every connect/error flicker) and would otherwise read a
+  // stale value through its closure.
+  const connectionStatusRef = useRef({});
+  useEffect(() => {
+    connectionStatusRef.current = connectionStatus;
+  }, [connectionStatus]);
   const [yAxisRange, setYAxisRange] = useState(null);
   const [xAxisRange, setXAxisRange] = useState(null);
   const [revision, setRevision] = useState(0);
 
-
   const [liveStats, setLiveStats] = useState({
-    dataRate: 0,   // Number of PV data message received by this plot per second
-    plotRate: 0,   // Number of plot update requests issued per second
-    plotDelay: null,  // Time in milliseconds between receiving the lastest PV data and starting the next plot updated
+    dataRate: 0, // Number of PV data message received by this plot per second
+    plotRate: 0, // Number of plot update requests issued per second
+    plotDelay: null, // Time in milliseconds between receiving the lastest PV data and starting the next plot updated
     totalPoints: 0,
   });
 
-
-  const buffersRef = useRef({});          // pvName -> DataBuffer
-  const unsubscribersRef = useRef({});    // pvName -> unsubscribe()
+  const buffersRef = useRef({}); // pvName -> DataBuffer
+  const unsubscribersRef = useRef({}); // pvName -> unsubscribe()
   const updateTimerRef = useRef(null);
 
   const statsRef = useRef({
     windowStart: performance.now(), //High resolution start time
-    receivedInWindow: 0,   //Number of PV messaged received during the current window
-    plottedInWindow: 0,    //Number of plot updated requests made during the current window
-    latestSequence: 0,     //Incremented whnever this plot receives a new PV message
-    plottedSequence: 0,    //Sequence number included in the most recent plot update
+    receivedInWindow: 0, //Number of PV messaged received during the current window
+    plottedInWindow: 0, //Number of plot updated requests made during the current window
+    latestSequence: 0, //Incremented whnever this plot receives a new PV message
+    plottedSequence: 0, //Sequence number included in the most recent plot update
     latestReceiveTime: null, //Browser time at which the latest PV message was received
-    latestPlotDelay: null,  //Waiting time from the latest data receipt to the next plot update
+    latestPlotDelay: null, //Waiting time from the latest data receipt to the next plot update
   });
-
-
 
   //const {
   //  removePlot,
@@ -105,18 +129,12 @@ export default function MultiPVPlot({ plotId, pvNames }) {
   //} = usePlotStore();
 
   const removePlot = usePlotStore((state) => state.removePlot);
-  
-  const removePVFromPlot = usePlotStore(
-    (state) => state.removePVFromPlot
-  );
-  
-  const timeSyncEnabled = usePlotStore(
-    (state) => state.timeSyncEnabled
-  );
-  
-  const globalTimeWindow = usePlotStore(
-    (state) => state.globalTimeWindow
-  );
+
+  const removePVFromPlot = usePlotStore((state) => state.removePVFromPlot);
+
+  const timeSyncEnabled = usePlotStore((state) => state.timeSyncEnabled);
+
+  const globalTimeWindow = usePlotStore((state) => state.globalTimeWindow);
 
   const getTraceColor = (pvName) => getPVColor(pvName);
 
@@ -131,11 +149,9 @@ export default function MultiPVPlot({ plotId, pvNames }) {
     const data = buffer.getData();
     //construct csv string
     const csv = ["Timestamp,Value"]
-      .concat(
-        data.x.map((time, i) => `${time.toISOString()},${data.y[i]}`)
-      )
+      .concat(data.x.map((time, i) => `${time.toISOString()},${data.y[i]}`))
       .join("\n");
-    //Wrap the CSV text in a Blob (a build-in browser API) object  
+    //Wrap the CSV text in a Blob (a build-in browser API) object
     //tagged as a UTF-8 CSV file so the browser treats it as a downloable .csv file
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob); //generate a temperal download url pointing to the blob in memmery
@@ -211,15 +227,16 @@ export default function MultiPVPlot({ plotId, pvNames }) {
 
   // Effect 1: subscribe/unsubscribe PVs for this plot
   // This effect keeps the actually-subscribed PVs in sync with the `pvNames` prop.
-  // It runs whenever `pvNames` changes: it subscribes new PVs and unsubscribes removed ones. 
+  // It runs whenever `pvNames` changes: it subscribes new PVs and unsubscribes removed ones.
   useEffect(() => {
     console.log("Sync subscriptions:", pvNames);
 
     // Subscribe new PVs
     pvNames.forEach((pvName) => {
-      if (!buffersRef.current[pvName]) {  //key check: does this PV already have a buffer
+      if (!buffersRef.current[pvName]) {
+        //key check: does this PV already have a buffer
         buffersRef.current[pvName] = new DataBuffer(PLOT_CONFIG.MAX_POINTS);
-	//set the status of this PV into connecting
+        //set the status of this PV into connecting
         setConnectionStatus((prev) => ({ ...prev, [pvName]: "connecting" }));
         //subscribe this PV by sending PV name and callbacks
         const unsubscribe = pvConnectionPool.subscribe(pvName, {
@@ -228,14 +245,12 @@ export default function MultiPVPlot({ plotId, pvNames }) {
             if (!buf) return;
             buf.addPoint(value, timestamp);
             //updateLatestValue(pvName, value, timestamp);
-		  
+
             const stats = statsRef.current;
 
             stats.receivedInWindow += 1;
             stats.latestSequence += 1;
             stats.latestReceiveTime = performance.now();
-		  
-		 
           },
           onError: (error) => {
             console.error(`Error for ${pvName}:`, error);
@@ -268,7 +283,7 @@ export default function MultiPVPlot({ plotId, pvNames }) {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pvNames]);
-  
+
   ///////////////////////////////////////////////////////////////////////
   // Unsubscribe everything on unmount
   useEffect(() => {
@@ -283,16 +298,16 @@ export default function MultiPVPlot({ plotId, pvNames }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getYAxisTitle=()=>{
-    console.log('getYAxisTitle - egus:', egus, 'pvNames:', pvNames);
+  const getYAxisTitle = () => {
+    console.log("getYAxisTitle - egus:", egus, "pvNames:", pvNames);
     //Collect EGUs of this plot's PVs (ignore empty or default)
-    for (const pv of pvNames){
-      if (egus[pv] && egus[pv] !=='default'){
-	console.log('found EGU for', pv, ':', egus[pv]);
+    for (const pv of pvNames) {
+      if (egus[pv] && egus[pv] !== "default") {
+        console.log("found EGU for", pv, ":", egus[pv]);
         return egus[pv];
-      }	      
-    }	    
-    return "Value"; 
+      }
+    }
+    return "Value";
   };
   // Effect 2: periodic plot redraw
   useEffect(() => {
@@ -301,198 +316,176 @@ export default function MultiPVPlot({ plotId, pvNames }) {
     const updateTimer = setInterval(() => {
       const stats = statsRef.current;
       const plotUpdateTime = performance.now();
-    
-      const hasNewData =
-        stats.latestSequence !== stats.plottedSequence;
-    
+
+      const hasNewData = stats.latestSequence !== stats.plottedSequence;
+
       if (hasNewData) {
         updateCount += 1;
-    
+
         // Capture the newest sequence included in this update.
         const sequenceBeingPlotted = stats.latestSequence;
-    
+
         // Measure the time from the latest data receipt
         // to the start of this plot update.
         if (stats.latestReceiveTime !== null) {
-          stats.latestPlotDelay =
-            plotUpdateTime - stats.latestReceiveTime;
+          stats.latestPlotDelay = plotUpdateTime - stats.latestReceiveTime;
         }
-    
+
         let xMin = null;
         let xMax = null;
-    
+
         if (timeSyncEnabled) {
           let latest = null;
-    
+
           pvNames.forEach((pvName) => {
             const buffer = buffersRef.current[pvName];
-    
-            const timestamp = buffer
-              ? buffer.getLatestTimestamp()
-              : null;
-    
+
+            const timestamp = buffer ? buffer.getLatestTimestamp() : null;
+
             if (timestamp && (!latest || timestamp > latest)) {
               latest = timestamp;
             }
           });
-    
+
           xMax = latest || new Date();
-          xMin = new Date(
-            xMax.getTime() - globalTimeWindow * 1000
-          );
+          xMin = new Date(xMax.getTime() - globalTimeWindow * 1000);
         }
-    
+
         const traces = pvNames.map((pvName) => {
           const buffer = buffersRef.current[pvName];
-    
-          let data = buffer
-            ? buffer.getData()
-            : { x: [], y: [] };
-    
-          if (
-            timeSyncEnabled &&
-            xMin &&
-            xMax &&
-            data.x.length > 0
-          ) {
+
+          let data = buffer ? buffer.getData() : { x: [], y: [] };
+
+          if (timeSyncEnabled && xMin && xMax && data.x.length > 0) {
             const filteredX = [];
             const filteredY = [];
-    
-            for (
-              let index = 0;
-              index < data.x.length;
-              index += 1
-            ) {
+
+            for (let index = 0; index < data.x.length; index += 1) {
               const timestamp = data.x[index];
-    
+
               if (timestamp >= xMin && timestamp <= xMax) {
                 filteredX.push(timestamp);
                 filteredY.push(data.y[index]);
               }
             }
-    
+
             data = {
               x: filteredX,
               y: filteredY,
             };
           }
-    
+
           return {
             x: data.x,
             y: data.y,
-	    type: "scatter",
-	    //type: "scattergl",
+            type: "scatter",
+            //type: "scattergl",
             mode: "lines",
-            name: getDisplayName(pvName),
-	    
+            name: buildTraceName(pvName, connectionStatusRef.current[pvName]),
+            _pvName: pvName,
+
             line: {
               width: 2,
               color: getTraceColor(pvName),
             },
           };
         });
-    
+
         // Recalculate the Y-axis less frequently.
         if (updateCount === 1 || updateCount % 10 === 0) {
-          const allValues = traces.flatMap(
-            (trace) => trace.y
-          );
-    
+          const allValues = traces.flatMap((trace) => trace.y);
+
           if (allValues.length > 0) {
             const min = Math.min(...allValues);
             const max = Math.max(...allValues);
             const range = max - min;
             const padding = range * 0.2 || 0.0001;
-    
-            setYAxisRange([
-              min - padding * 0.8,
-              max + padding * 3.0,
-            ]);
+
+            setYAxisRange([min - padding * 0.8, max + padding * 3.0]);
           }
         }
-    
+
         if (timeSyncEnabled && xMin && xMax) {
           setXAxisRange([xMin, xMax]);
         } else {
           setXAxisRange(null);
         }
-    
+
         // Count only real plot update requests.
         stats.plottedInWindow += 1;
-    
+
         setPlotData(traces);
-        setRevision(
-          (previousRevision) => previousRevision + 1
-        );
-    
+        setRevision((previousRevision) => previousRevision + 1);
+
         // Mark all data up to this sequence as submitted
         // in the current plot update.
         stats.plottedSequence = sequenceBeingPlotted;
       }
-    
+
       // Update the displayed statistics even when no new
       // PV data has arrived.
-      const statsElapsed =
-        plotUpdateTime - stats.windowStart;
-    
+      const statsElapsed = plotUpdateTime - stats.windowStart;
+
       if (statsElapsed >= 2000) {
         const elapsedSeconds = statsElapsed / 1000;
-    
-        const totalPoints = pvNames.reduce(
-          (sum, pvName) => {
-            const buffer = buffersRef.current[pvName];
-    
-            return (
-              sum +
-              (buffer ? buffer.getPointCount() : 0)
-            );
-          },
-          0
-        );
-    
+
+        const totalPoints = pvNames.reduce((sum, pvName) => {
+          const buffer = buffersRef.current[pvName];
+
+          return sum + (buffer ? buffer.getPointCount() : 0);
+        }, 0);
+
         setLiveStats({
-          dataRate:
-            stats.receivedInWindow / elapsedSeconds,
-    
-          plotRate:
-            stats.plottedInWindow / elapsedSeconds,
-    
+          dataRate: stats.receivedInWindow / elapsedSeconds,
+
+          plotRate: stats.plottedInWindow / elapsedSeconds,
+
           plotDelay: stats.latestPlotDelay,
-    
+
           totalPoints,
         });
-    
+
         stats.windowStart = plotUpdateTime;
         stats.receivedInWindow = 0;
         stats.plottedInWindow = 0;
       }
     }, PLOT_CONFIG.UPDATE_INTERVAL);
 
-
-    //-----------------------------------	  
+    //-----------------------------------
     updateTimerRef.current = updateTimer;
-  
+
     console.log(
-      `Plot update timer started ` +
-      `(${PLOT_CONFIG.UPDATE_INTERVAL}ms)`
+      `Plot update timer started ` + `(${PLOT_CONFIG.UPDATE_INTERVAL}ms)`,
     );
-  
+
     return () => {
       clearInterval(updateTimer);
-  
+
       if (updateTimerRef.current === updateTimer) {
         updateTimerRef.current = null;
       }
-  
+
       console.log("Plot update timer stopped");
     };
   }, [pvNames, timeSyncEnabled, globalTimeWindow, showAlias, aliases]);
 
-
+  // Refresh the legend's status glyph as soon as connectionStatus changes,
+  // rather than waiting for the next data-driven redraw above - a PV that
+  // errors out before ever producing data would otherwise never show it.
+  useEffect(() => {
+    setPlotData((previousTraces) =>
+      previousTraces.map((trace) => ({
+        ...trace,
+        name: buildTraceName(trace._pvName, connectionStatus[trace._pvName]),
+      })),
+    );
+    setRevision((previousRevision) => previousRevision + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionStatus, showAlias, aliases]);
 
   // Returns a connection-status icon based on the status string.
   // Note: currently unused in the UI because SHOW_PV_TAGS is false (PV tags are hidden).
-  
+
   const getStatusIcon = (status) => {
     switch (status) {
       case "connected":
@@ -504,26 +497,25 @@ export default function MultiPVPlot({ plotId, pvNames }) {
     }
   };
   // Build the Plotly layout object. These keys follow the Plotly.js layout spec
-  // 
+  //
   const plotLayout = {
-    ...PLOT_LAYOUT_TEMPLATE,//spread the shared default layout from constants.js
+    ...PLOT_LAYOUT_TEMPLATE, //spread the shared default layout from constants.js
     datarevision: revision, //redraw signal: bump this to force Plotly to re-render
     showlegend: true, //show the legend
-    legend:{
-	    font:{size: 18},
-	    x:0,
-	    y:1,
-	    xanchor:'left',
-	    yanchor:'top',
-	    bgcolor:'255,255,255, 0.7',
-
+    legend: {
+      font: { size: 18 },
+      x: 0,
+      y: 1,
+      xanchor: "left",
+      yanchor: "top",
+      bgcolor: "255,255,255, 0.7",
     },
     yaxis: {
       ...PLOT_LAYOUT_TEMPLATE.yaxis,
       //autorange: yAxisRange ? false : true,
       autorange: true,
       range: yAxisRange,
-      title: {text: getYAxisTitle(),},
+      title: { text: getYAxisTitle() },
       exponentformat: "e",
       tickformat: ".2e",
     },
@@ -540,12 +532,10 @@ export default function MultiPVPlot({ plotId, pvNames }) {
 
   //
 
-
-
   return (
     <div className="plot-widget">
       <div className="plot-header">
-	{/*
+        {/*
 	<div className="live-stats">
           <span title="Incoming WebSocket messages per second">
             Data: {liveStats.dataRate.toFixed(1)} Hz
@@ -567,9 +557,9 @@ export default function MultiPVPlot({ plotId, pvNames }) {
           </span>
         </div>
         */}
-        
+
         <div className="user-input">
-	  {/*
+          {/*
 	  {displayText ? displayText: <span style={{ color:'#999'}}> </span>}
 	  <input   
             type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)}
@@ -579,17 +569,17 @@ export default function MultiPVPlot({ plotId, pvNames }) {
           <button className="enter-button" onClick={handleSubmit}>Enter</button>
 	  <button className="clear-button" onClick={handleClear}>Clear</button>
 	  */}
-	</div>  
+        </div>
         <div className="legend-toggle">
           <button
-            className="btn btn-secondary" style = {{}}
+            className="btn btn-secondary"
+            style={{}}
             onClick={() => setShowAlias((prev) => !prev)}
             title="Toggle legend between alias and PV name"
           >
-            {showAlias ? 'Show PV Names' : 'Show Aliases'}
+            {showAlias ? "Show PV Names" : "Show Aliases"}
           </button>
-        </div>       
-
+        </div>
 
         <div className="pv-tags">
           {SHOW_PV_TAGS &&

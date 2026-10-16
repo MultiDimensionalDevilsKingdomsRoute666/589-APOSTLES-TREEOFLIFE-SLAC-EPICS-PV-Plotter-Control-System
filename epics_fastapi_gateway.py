@@ -69,8 +69,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # ============================================================
     log.info("🚀 Starting EPICS WebSocket Gateway...")
     
-    # Create caproto context for Channel Access protocol
-    CA_CONTEXT = Context()
+    # Create caproto context for Channel Access protocol.
+    # client_name is passed explicitly because caproto otherwise falls back
+    # to getpass.getuser(), which fails when running as a uid with no
+    # matching /etc/passwd entry inside the container (e.g. when the
+    # container is run as the host's own uid to satisfy NFS permissions -
+    # see docker-compose.yml).
+    CA_CONTEXT = Context(client_name="epics-pv-plotter")
     
     # Display startup banner
     log.info("╔════════════════════════════════════════════════════════╗")

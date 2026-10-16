@@ -9,7 +9,8 @@ import PlotGrid from './components/PlotGrid';
 import { Plus, Trash2, Activity, Clock, ChevronDown, ChevronUp, X } from 'lucide-react';
 import './App.css';
 
-const API_BASE = `http://${window.location.hostname}:8000`;
+// Relative path: nginx proxies /api to the backend on the same origin.
+const API_BASE = "";
 
 function LivePVValue({
   pvName,

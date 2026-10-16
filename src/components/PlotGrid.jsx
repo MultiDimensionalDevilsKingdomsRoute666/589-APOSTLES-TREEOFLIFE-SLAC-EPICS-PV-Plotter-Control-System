@@ -32,7 +32,8 @@ export default function PlotGrid() {
   );
   const handleStandardConfigLoad = async () => {
     console.log("Loading Standard Configurations");
-    const API_BASE = `http://${window.location.hostname}:8000`;
+    // Relative path: nginx proxies /api to the backend on the same origin.
+    const API_BASE = "";
 
     try {
       const response = await fetch(`${API_BASE}/api/config`);

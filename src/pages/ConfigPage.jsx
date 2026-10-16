@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePlotStore } from "../stores/usePlotStore";
 
-// Backend API base URL (uses the same host the page is opened from)
-const API_BASE = `http://${window.location.hostname}:8000`;
+// Relative path: nginx proxies /api to the backend on the same origin.
+const API_BASE = "";
 
 function ConfigPage() {
   const navigate = useNavigate();

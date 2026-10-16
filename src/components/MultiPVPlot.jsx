@@ -10,7 +10,8 @@ import { PLOT_CONFIG, PLOT_LAYOUT_TEMPLATE, getPVColor } from "../utils/constant
 import { usePlotStore } from "../stores/usePlotStore";
 import "./MultiPVPlot.css";
 
-const API_BASE = `http://${window.location.hostname}:8000`;
+// Relative path: nginx proxies /api to the backend on the same origin.
+const API_BASE = "";
 
 export default function MultiPVPlot({ plotId, pvNames }) {
   const SHOW_PV_TAGS = false;

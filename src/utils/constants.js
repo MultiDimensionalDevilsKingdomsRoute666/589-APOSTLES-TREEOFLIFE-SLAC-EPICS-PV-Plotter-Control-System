@@ -4,12 +4,10 @@
 // WebSocket Configuration
 // ================================================================
 export const WS_CONFIG = {
-  // FastAPI  gateway server address
-  // BASE_URL:
-  //  import.meta.env.VITE_WS_BASE_URL ||
-  //  "ws://192.168.22.4:8000",
-  // Change into the local hostname
-  BASE_URL: `ws://${window.location.hostname}:8000`,
+  // Same-origin WebSocket URL: nginx proxies /ws to the backend on :8000,
+  // so no host/port needs to be hardcoded here. wss:// is used automatically
+  // when the page itself is loaded over https.
+  BASE_URL: `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`,
 
 
   // Reconnection settings

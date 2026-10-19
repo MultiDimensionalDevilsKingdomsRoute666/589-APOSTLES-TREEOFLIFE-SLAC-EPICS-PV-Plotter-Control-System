@@ -2,9 +2,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePlotStore } from "../stores/usePlotStore";
-
+import { API_BASE } from "../utils/constants";   
 // Relative path: nginx proxies /api to the backend on the same origin.
-const API_BASE = "";
 
 function ConfigPage() {
   const navigate = useNavigate();

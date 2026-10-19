@@ -8,9 +8,8 @@ import { pvConnectionPool } from "./services/PVConnectionPool";
 import PlotGrid from './components/PlotGrid';
 import { Plus, Trash2, Activity, Clock, ChevronDown, ChevronUp, X } from 'lucide-react';
 import './App.css';
-
+import { API_BASE } from "./utils/constants";
 // Relative path: nginx proxies /api to the backend on the same origin.
-const API_BASE = "";
 
 function LivePVValue({
   pvName,

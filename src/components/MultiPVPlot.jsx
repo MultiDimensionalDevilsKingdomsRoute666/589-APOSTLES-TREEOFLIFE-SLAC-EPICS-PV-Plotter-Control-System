@@ -5,8 +5,8 @@ import { X, Wifi, WifiOff, AlertCircle, Download } from "lucide-react";
 
 import { DataBuffer } from "../services/DataBuffer";
 import { pvConnectionPool } from "../services/PVConnectionPool";
-
 import {
+  API_BASE,
   PLOT_CONFIG,
   PLOT_LAYOUT_TEMPLATE,
   getPVColor,
@@ -15,7 +15,6 @@ import { usePlotStore } from "../stores/usePlotStore";
 import "./MultiPVPlot.css";
 
 // Relative path: nginx proxies /api to the backend on the same origin.
-const API_BASE = "";
 
 export default function MultiPVPlot({ plotId, pvNames }) {
   const SHOW_PV_TAGS = false;

@@ -1,5 +1,6 @@
 // src/utils/constants.js
-
+//export const API_BASE = "";   
+export const API_BASE = `http://${window.location.hostname}:8000`;
 // ================================================================
 // WebSocket Configuration
 // ================================================================
@@ -7,8 +8,8 @@ export const WS_CONFIG = {
   // Same-origin WebSocket URL: nginx proxies /ws to the backend on :8000,
   // so no host/port needs to be hardcoded here. wss:// is used automatically
   // when the page itself is loaded over https.
-  BASE_URL: `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`,
-
+  //BASE_URL: `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`,
+  BASE_URL: `ws://${window.location.hostname}:8000`,   
 
   // Reconnection settings
   MAX_RECONNECT_ATTEMPTS: 5,      // Maximum number of reconnection attempts

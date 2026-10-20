@@ -244,6 +244,12 @@ export default function MultiPVPlot({ plotId, pvNames }) {
             if (!buf) return;
             buf.addPoint(value, timestamp);
             //updateLatestValue(pvName, value, timestamp);
+  	    setConnectionStatus((prev) =>
+	      prev[pvName] === "connected"
+	        ? prev
+	        : { ...prev, [pvName]: "connected" }
+	    );
+
 
             const stats = statsRef.current;
 

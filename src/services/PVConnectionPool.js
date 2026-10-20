@@ -75,7 +75,9 @@ class PVConnectionPool {
     };
 
     entry.subscribers.add(subscriber);
-
+    if (entry.ws.isConnected()) {
+      subscriber.onConnect?.();
+    }
     console.log(
       `[POOL] ${pvName} ` +
         `subscribers=${entry.subscribers.size}, ` +

@@ -120,7 +120,9 @@ export class PVWebSocket {
       this.connect();
     }, WS_CONFIG.RECONNECT_DELAY);
   }
-
+  isConnected() {
+    return this.ws && this.ws.readyState === WebSocket.OPEN;
+  }
   // Intentionally close the connection and stop any reconnect logic.
   disconnect() {
     // Prevent onclose from triggering auto-reconnect.

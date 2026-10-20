@@ -3,7 +3,10 @@
     "BL22:SCAN:MASTER:ADC1": "I0",
     "BL22:SCAN:MASTER:ADC2": "I1",
     "BL22:SCAN:MASTER:ADC3": "I2",
-    "BL22:SCAN:MASTER:ADC4": "FY"
+    "BL22:SCAN:MASTER:ADC4": "FY",
+    "BL22:SCAN:MASTER:ADC5": "temp",
+    "BL22:SCAN:MASTER:ADC6": "xemp",
+    "BL22:SCAN:MASTER:MOTOR1.REP": "temp"
   },
   "egus": {
     "BL22:SCAN:MASTER:ADC1": "mm",
@@ -66,19 +69,11 @@
           "y": 3,
           "w": 4,
           "h": 3
-        },
-        {
-          "id": 6,
-          "pvNames": [
-            "BL22:SCAN:MASTER:ADC5"
-          ],
-          "x": 0,
-          "y": 6,
-          "w": 4,
-          "h": 3
         }
       ],
-      "livePVNames": [],
+      "livePVNames": [
+        "BL22:SCAN:MASTER:MOTOR1.REP"
+      ],
       "globalTimeWindow": 60
     }
   }

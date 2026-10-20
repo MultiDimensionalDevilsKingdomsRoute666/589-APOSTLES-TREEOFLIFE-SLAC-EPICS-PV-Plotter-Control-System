@@ -66,7 +66,8 @@ export const PLOT_LAYOUT_TEMPLATE = {
     zeroline: false               // Hide zero line
   },
   
-  hovermode: 'closest',           // Hover tooltip mode
+  hovermode: 'x',
+  //hovermode: 'closest',           // Hover tooltip mode
   showlegend: true,               // Show plot legend
  
   legend: {

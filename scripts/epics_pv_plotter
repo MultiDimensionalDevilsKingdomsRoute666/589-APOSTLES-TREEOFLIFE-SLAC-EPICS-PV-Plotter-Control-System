@@ -1,0 +1,29 @@
+server {
+    listen 80;
+    server_name _;
+
+    root /var/www/epics-pv-plotter;
+    index index.html;
+
+    location / {
+        try_files $uri /index.html;
+    }
+
+    location /ws {
+        proxy_pass http://127.0.0.1:8000;    # backend 
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 3600s;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+    }
+
+    location /health {
+        proxy_pass http://127.0.0.1:8000;
+    }
+}

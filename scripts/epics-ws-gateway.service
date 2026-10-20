@@ -1,0 +1,33 @@
+[Unit]
+Description=EPICS Channel Access WebSocket Gateway
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=b_bluesky
+WorkingDirectory=/home/b_bluesky/Documents/epics-pv-plotter
+
+# 
+TimeoutStopSec=5
+TimeoutStartSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+SendSIGKILL=yes
+
+# 
+ExecStart=/bin/bash /home/b_bluesky/Documents/epics-pv-plotter/scripts/start-epics-ws-gateway.sh
+
+# 
+Restart=always
+RestartSec=3
+
+# 
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=epics-ws-gateway
+
+[Install]
+WantedBy=multi-user.target
+
+

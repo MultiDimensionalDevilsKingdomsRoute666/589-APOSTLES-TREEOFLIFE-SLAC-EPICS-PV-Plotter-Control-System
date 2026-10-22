@@ -521,8 +521,9 @@ export default function MultiPVPlot({ plotId, pvNames }) {
       autorange: true,
       range: yAxisRange,
       title: { text: getYAxisTitle() },
-      exponentformat: "e",
-      tickformat: ".2e",
+      //exponentformat: "e",
+      //tickformat: ".2e",
+      tickformat: "",
     },
     xaxis: {
       ...PLOT_LAYOUT_TEMPLATE.xaxis,

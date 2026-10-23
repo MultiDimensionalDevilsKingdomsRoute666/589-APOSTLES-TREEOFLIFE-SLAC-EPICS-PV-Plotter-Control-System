@@ -6,6 +6,7 @@ export class DataBuffer {
     this.timestamps = [];
     this.values = [];
     this.totalPointsReceived = 0;
+    this.hadBadTimestamp = false;
   }
 
   addPoint(value, timestamp) {
@@ -19,6 +20,7 @@ export class DataBuffer {
     const oneHourFromNow = new Date(now.getTime() + 3600000);
 
     if (time < oneHourAgo || time > oneHourFromNow) {
+      this.hadBadTimestamp = true;
       console.warn("⚠️ Suspicious timestamp:", {
         backend: timestamp,
         converted: time.toISOString(),
@@ -95,4 +97,9 @@ export class DataBuffer {
 
     return { min, max };
   }
+  // UI 
+  hasBadTimestampFlag() {
+    return this.hadBadTimestamp;
+  }
+
 }

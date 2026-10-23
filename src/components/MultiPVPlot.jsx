@@ -26,6 +26,9 @@ export default function MultiPVPlot({ plotId, pvNames }) {
   //Load Aliases and  EGU from backend
   const [egus, setEgus] = useState({});
   const [aliases, setAliases] = useState({});
+  const badTimestampWarnedRef = useRef(false);
+
+
 
   useEffect(() => {
     fetch(`${API_BASE}/api/egus`)
@@ -243,12 +246,21 @@ export default function MultiPVPlot({ plotId, pvNames }) {
             const buf = buffersRef.current[pvName];
             if (!buf) return;
             buf.addPoint(value, timestamp);
+            if (buf.hasBadTimestampFlag() && !badTimestampWarnedRef.current){
+              badTimestampWarnedRef.current = true;
+              alert(
+                `⚠️ Warning: PV "${pvName}" has an invalid timestamp ` +
+                `(earlier than 1 hour ago).\n\n` +
+                `This usually means the IOC clock is not synchronized. ` +
+                `The time axis is using data-arrival time instead of the real sample time.`
+              );
+            }
             //updateLatestValue(pvName, value, timestamp);
-  	    setConnectionStatus((prev) =>
-	      prev[pvName] === "connected"
-	        ? prev
-	        : { ...prev, [pvName]: "connected" }
-	    );
+            setConnectionStatus((prev) =>
+              prev[pvName] === "connected"
+                ? prev
+                : { ...prev, [pvName]: "connected" }
+            );
 
 
             const stats = statsRef.current;

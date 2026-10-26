@@ -274,3 +274,31 @@
   background-color: #4338ca;
 }
 
+
+/* uPlot host: fills the plot container; uPlot sizes itself to it. */
+.uplot-host {
+  position: relative;
+  overflow: hidden;
+}
+
+.uplot-host .uplot {
+  font-family: Arial, sans-serif;
+}
+
+.uplot-host .u-over {
+  background: transparent;
+}
+
+.uplot-host .u-wrap {
+  background: #f8f9fa;
+}
+
+.uplot-host .u-legend {
+  font-size: 14px;
+  text-align: left;
+  padding: 2px 0 0 8px;
+}
+
+.uplot-host .u-legend .u-series > * {
+  padding: 1px 4px;
+}

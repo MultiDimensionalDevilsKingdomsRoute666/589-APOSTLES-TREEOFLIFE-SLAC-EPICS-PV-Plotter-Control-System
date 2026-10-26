@@ -37,57 +37,16 @@ export const PLOT_CONFIG = {
 };
 
 // ================================================================
-// Plotly Layout Template
+// uPlot Theme
 // ================================================================
-export const PLOT_LAYOUT_TEMPLATE = {
-  autosize: true,
-  margin: { l: 50, r: 30, t: 40, b: 40 },
-  paper_bgcolor: 'white',
-  plot_bgcolor: '#f8f9fa',
-  
-  font: {
-    family: 'Arial, sans-serif',
-    size: 12,
-    color: '#333'
-  },
-  
-  xaxis: {
-    title: 'Time',                // X-axis label
-    gridcolor: '#ddd',            // Grid line color
-    showgrid: true,               // Show grid lines
-    zeroline: false,              // Hide zero line
-    type: 'date'                  // X-axis data type (date/time)
-  },
-  
-  yaxis: {
-    title: 'Value',               // Y-axis label
-    gridcolor: '#ddd',            // Grid line color
-    showgrid: true,               // Show grid lines
-    zeroline: false               // Hide zero line
-  },
-  
-  hovermode: 'x',
-  //hovermode: 'closest',           // Hover tooltip mode
-  showlegend: true,               // Show plot legend
- 
-  legend: {
-    x: 0.01,
-    y: 1,
-    xanchor: 'left',           // 
-    yanchor: 'top',
-    orientation: 'v',
-    width: 0.32,               // 
-    bgcolor: 'rgba(255,255,255,0.95)',
-    bordercolor: '#d0d0d0',
-    borderwidth: 1,
-    font: { size: 11 },
-    traceorder: 'normal',
-    itemclick: false,
-    itemdoubleclick: false
-  }
-
-
-
+export const PLOT_THEME = {
+  fontFamily: 'Arial, sans-serif',
+  fontSize: 12,
+  fontColor: '#333',
+  plotBgColor: '#f8f9fa',         // Background of the plotting area
+  gridColor: '#ddd',              // Grid line color
+  lineWidth: 2,                   // Trace line width (CSS pixels)
+  xTickFormat: '{HH}:{mm}:{ss}',  // uPlot.fmtDate template for X-axis ticks
 };
 
 // ================================================================

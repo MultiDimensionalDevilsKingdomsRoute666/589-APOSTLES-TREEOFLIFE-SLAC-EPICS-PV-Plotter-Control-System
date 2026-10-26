@@ -1,6 +1,7 @@
 // src/components/MultiPVPlot.jsx
 import { useState, useEffect, useRef } from "react";
-import Plot from "react-plotly.js";
+import uPlot from "uplot";
+import "uplot/dist/uPlot.min.css";
 import { X, Wifi, WifiOff, AlertCircle, Download } from "lucide-react";
 
 import { DataBuffer } from "../services/DataBuffer";
@@ -8,7 +9,7 @@ import { pvConnectionPool } from "../services/PVConnectionPool";
 import {
   API_BASE,
   PLOT_CONFIG,
-  PLOT_LAYOUT_TEMPLATE,
+  PLOT_THEME,
   getPVColor,
 } from "../utils/constants";
 import { usePlotStore } from "../stores/usePlotStore";
@@ -50,9 +51,9 @@ export default function MultiPVPlot({ plotId, pvNames }) {
     return pvName; // show raw PV name
   };
 
-  // Plotly legend text is rendered as SVG, so a React icon component can't
-  // be placed in it - a colored dot glyph is used instead, matching the
-  // colors used by the (hidden) HTML status icons below.
+  // The uPlot legend is built by uPlot itself (outside React), so a React
+  // icon component can't be placed in it - a colored dot glyph is used
+  // instead, matching the colors used by the (hidden) HTML status icons below.
   const getStatusGlyph = (status) => {
     switch (status) {
       case "connected":
@@ -85,19 +86,12 @@ export default function MultiPVPlot({ plotId, pvNames }) {
     }
   };
 
-  const [plotData, setPlotData] = useState([]);
   const [connectionStatus, setConnectionStatus] = useState({});
-  // Mirrors connectionStatus for the periodic redraw effect below, which
-  // intentionally doesn't depend on connectionStatus (to avoid restarting
-  // its timer on every connect/error flicker) and would otherwise read a
-  // stale value through its closure.
-  const connectionStatusRef = useRef({});
-  useEffect(() => {
-    connectionStatusRef.current = connectionStatus;
-  }, [connectionStatus]);
-  const [yAxisRange, setYAxisRange] = useState(null);
-  const [xAxisRange, setXAxisRange] = useState(null);
-  const [revision, setRevision] = useState(0);
+
+  // uPlot draws straight to a canvas, so plot data never goes through React
+  // state: the redraw timer pushes new data into the uPlot instance directly.
+  const plotContainerRef = useRef(null);
+  const uplotRef = useRef(null);
 
   const [liveStats, setLiveStats] = useState({
     dataRate: 0, // Number of PV data message received by this plot per second
@@ -331,21 +325,194 @@ export default function MultiPVPlot({ plotId, pvNames }) {
     }
     return "Value";
   };
-  // Effect 2: periodic plot redraw
+  // Build the uPlot data table for the current buffers: [xs, ys_pv1, ys_pv2, ...].
+  // uPlot needs every series to share one x array, so each PV's samples are
+  // merged onto the union of all timestamps (uPlot.join fills the holes, and
+  // spanGaps draws the lines straight across them).
+  const buildPlotData = () => {
+    let xMin = null;
+    let xMax = null;
+
+    // If time sync is enabled, find the latest timestamp across all PVs
+    if (timeSyncEnabled) {
+      let latest = null;
+
+      pvNames.forEach((pvName) => {
+        const buffer = buffersRef.current[pvName];
+
+        const timestamp = buffer ? buffer.getLatestTimestamp() : null;
+
+        // Skip invalid Dates: NaN never compares greater, so one would freeze xMax.
+        if (timestamp && !isNaN(timestamp.getTime()) && (!latest || timestamp > latest)) {
+          latest = timestamp;
+        }
+      });
+
+      xMax = latest;
+      xMin = xMax ? new Date(xMax.getTime() - globalTimeWindow * 1000) : null;
+    }
+
+    const tables = pvNames.map((pvName) => {
+      const buffer = buffersRef.current[pvName];
+      const data = buffer ? buffer.getData() : { x: [], y: [] };
+
+      // uPlot time scales are in seconds. Points with an invalid timestamp
+      // can't be placed on the x axis, so they are dropped here.
+      const xs = [];
+      const ys = [];
+
+      for (let index = 0; index < data.x.length; index += 1) {
+        const timestamp = data.x[index];
+        const ms = timestamp.getTime();
+
+        if (isNaN(ms)) continue;
+        if (xMin && xMax && (timestamp < xMin || timestamp > xMax)) continue;
+
+        const value = data.y[index];
+        xs.push(ms / 1000);
+        ys.push(Number.isFinite(value) ? value : null);
+      }
+
+      return [xs, ys];
+    });
+
+    const data = tables.length > 0 ? uPlot.join(tables) : [[]];
+
+    return {
+      data,
+      xRange: xMin && xMax ? [xMin.getTime() / 1000, xMax.getTime() / 1000] : null,
+    };
+  };
+
+  // Push new data into the uPlot instance. Rescales both axes to the data
+  // (or to the shared time window when time sync is on), which also drops
+  // any zoom the user made while the plots were paused.
+  const pushPlotData = (plot) => {
+    const { data, xRange } = buildPlotData();
+
+    plot.setData(data);
+
+    if (xRange) {
+      plot.setScale("x", { min: xRange[0], max: xRange[1] });
+    }
+  };
+
+  const seriesLabels = pvNames.map((pvName) =>
+    buildTraceName(pvName, connectionStatus[pvName]),
+  );
+  const yAxisTitle = getYAxisTitle();
+
+  // Effect 2: create the uPlot instance.
+  // uPlot series and axis labels are fixed at creation time, so the plot is
+  // rebuilt (from the existing buffers) when the PV list, a legend label or
+  // the Y-axis title changes. These are rare compared to data updates.
   useEffect(() => {
-    let updateCount = 0;
+    const container = plotContainerRef.current;
+    if (!container) return undefined;
+
+    const axisStyle = {
+      stroke: PLOT_THEME.fontColor,
+      font: `${PLOT_THEME.fontSize}px ${PLOT_THEME.fontFamily}`,
+      labelFont: `${PLOT_THEME.fontSize + 2}px ${PLOT_THEME.fontFamily}`,
+      grid: { stroke: PLOT_THEME.gridColor, width: 1 },
+      ticks: { stroke: PLOT_THEME.gridColor, width: 1 },
+    };
+    const formatXTick = uPlot.fmtDate(PLOT_THEME.xTickFormat);
+
+    // The legend sits below the canvas, so the canvas gets whatever height
+    // the legend leaves over.
+    const getPlotSize = (plot) => {
+      const legend = plot?.root.querySelector(".u-legend");
+      return {
+        width: Math.max(container.clientWidth, 1),
+        height: Math.max(container.clientHeight - (legend?.offsetHeight ?? 0), 1),
+      };
+    };
+    const formatValue = (u, value) =>
+      value == null ? "--" : String(Number(value.toPrecision(6)));
+
+    const options = {
+      ...getPlotSize(null),
+      padding: [10, 30, 0, 0],
+      scales: {
+        x: { time: true },
+      },
+      axes: [
+        {
+          ...axisStyle,
+          label: "Time",
+          values: (u, splits) =>
+            splits.map((split) => formatXTick(new Date(split * 1000))),
+        },
+        {
+          ...axisStyle,
+          label: yAxisTitle,
+          size: 75,
+        },
+      ],
+      series: [
+        {
+          label: "Time",
+          value: "{YYYY}-{MM}-{DD} {HH}:{mm}:{ss}.{fff}",
+        },
+        ...pvNames.map((pvName, index) => ({
+          label: seriesLabels[index],
+          stroke: getTraceColor(pvName),
+          width: PLOT_THEME.lineWidth,
+          spanGaps: true,
+          points: { show: false },
+          value: formatValue,
+        })),
+      ],
+      legend: {
+        markers: { width: 2 },
+      },
+      cursor: {
+        // Drag horizontally to zoom the time axis; double-click to reset.
+        drag: { x: true, y: false },
+      },
+    };
+
+    const plot = new uPlot(options, buildPlotData().data, container);
+    uplotRef.current = plot;
+
+    // Disable legend click-to-hide (matches the old itemclick: false).
+    plot.root.querySelectorAll(".u-legend .u-series").forEach((row) => {
+      row.style.pointerEvents = "none";
+    });
+    plot.setSize(getPlotSize(plot));
+
+    // Track the container size (react-grid-layout resizes widgets freely),
+    // and the legend's, which grows when hover values make it wrap.
+    const resizeObserver = new ResizeObserver(() => {
+      plot.setSize(getPlotSize(plot));
+    });
+    resizeObserver.observe(container);
+    resizeObserver.observe(plot.root.querySelector(".u-legend"));
+
+    return () => {
+      resizeObserver.disconnect();
+      plot.destroy();
+      if (uplotRef.current === plot) {
+        uplotRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pvNames, seriesLabels.join("\u0000"), yAxisTitle]);
+
+  // Effect 3: periodic plot redraw
+  useEffect(() => {
     //----------------------------------
     const updateTimer = setInterval(() => {
       const stats = statsRef.current;
       const plotUpdateTime = performance.now();
 
       const hasNewData = stats.latestSequence !== stats.plottedSequence;
+      const plot = uplotRef.current;
 
       // While paused, data keeps buffering but the plot is not redrawn.
       // plottedSequence stays behind, so the plot catches up on resume.
-      if (hasNewData && !plotsPaused) {
-        updateCount += 1;
-
+      if (hasNewData && !plotsPaused && plot) {
         // Capture the newest sequence included in this update.
         const sequenceBeingPlotted = stats.latestSequence;
 
@@ -355,94 +522,10 @@ export default function MultiPVPlot({ plotId, pvNames }) {
           stats.latestPlotDelay = plotUpdateTime - stats.latestReceiveTime;
         }
 
-        let xMin = null;
-        let xMax = null;
-        
-        // If time sync is enabled, find the latest timestamp across all PVs
-        if (timeSyncEnabled) {
-          let latest = null;
-
-          pvNames.forEach((pvName) => {
-            const buffer = buffersRef.current[pvName];
-
-            const timestamp = buffer ? buffer.getLatestTimestamp() : null;
-
-            // Skip invalid Dates: NaN never compares greater, so one would freeze xMax.
-            if (timestamp && !isNaN(timestamp.getTime()) && (!latest || timestamp > latest)) {
-              latest = timestamp;
-            }
-          });
-
-          xMax = latest; //xMax = latest || new Date();
-          xMin = xMax ? new Date(xMax.getTime() - globalTimeWindow * 1000) : null;
-          //xMin = new Date(xMax.getTime() - globalTimeWindow * 1000);
-        }
-
-        const traces = pvNames.map((pvName) => {
-          const buffer = buffersRef.current[pvName];
-
-          let data = buffer ? buffer.getData() : { x: [], y: [] };
-
-          if (timeSyncEnabled && xMin && xMax && data.x.length > 0) {
-            const filteredX = [];
-            const filteredY = [];
-
-            for (let index = 0; index < data.x.length; index += 1) {
-              const timestamp = data.x[index];
-
-              if (timestamp >= xMin && timestamp <= xMax) {
-                filteredX.push(timestamp);
-                filteredY.push(data.y[index]);
-              }
-            }
-
-            data = {
-              x: filteredX,
-              y: filteredY,
-            };
-          }
-
-          return {
-            x: data.x,
-            y: data.y,
-            type: "scatter",
-            //type: "scattergl",
-            mode: "lines",
-            name: buildTraceName(pvName, connectionStatusRef.current[pvName]),
-            _pvName: pvName,
-
-            line: {
-              width: 2,
-              color: getTraceColor(pvName),
-            },
-          };
-        });
-
-        // Recalculate the Y-axis less frequently.
-        if (updateCount === 1 || updateCount % 10 === 0) {
-          const allValues = traces.flatMap((trace) => trace.y);
-
-          if (allValues.length > 0) {
-            const min = Math.min(...allValues);
-            const max = Math.max(...allValues);
-            const range = max - min;
-            const padding = range * 0.2 || 0.0001;
-
-            setYAxisRange([min - padding * 0.8, max + padding * 3.0]);
-          }
-        }
-
-        if (timeSyncEnabled && xMin && xMax) {
-          setXAxisRange([xMin, xMax]);
-        } else {
-          setXAxisRange(null);
-        }
+        pushPlotData(plot);
 
         // Count only real plot update requests.
         stats.plottedInWindow += 1;
-
-        setPlotData(traces);
-        setRevision((previousRevision) => previousRevision + 1);
 
         // Mark all data up to this sequence as submitted
         // in the current plot update.
@@ -494,21 +577,8 @@ export default function MultiPVPlot({ plotId, pvNames }) {
 
       console.log("Plot update timer stopped");
     };
-  }, [pvNames, timeSyncEnabled, globalTimeWindow, showAlias, aliases, plotsPaused]);
-
-  // Refresh the legend's status glyph as soon as connectionStatus changes,
-  // rather than waiting for the next data-driven redraw above - a PV that
-  // errors out before ever producing data would otherwise never show it.
-  useEffect(() => {
-    setPlotData((previousTraces) =>
-      previousTraces.map((trace) => ({
-        ...trace,
-        name: buildTraceName(trace._pvName, connectionStatus[trace._pvName]),
-      })),
-    );
-    setRevision((previousRevision) => previousRevision + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connectionStatus, showAlias, aliases]);
+  }, [pvNames, timeSyncEnabled, globalTimeWindow, plotsPaused]);
 
   // Returns a connection-status icon based on the status string.
   // Note: currently unused in the UI because SHOW_PV_TAGS is false (PV tags are hidden).
@@ -523,46 +593,6 @@ export default function MultiPVPlot({ plotId, pvNames }) {
         return <WifiOff size={14} className="status-icon connecting" />;
     }
   };
-  // Build the Plotly layout object. These keys follow the Plotly.js layout spec
-  //
-  const plotLayout = {
-    ...PLOT_LAYOUT_TEMPLATE, //spread the shared default layout from constants.js
-    datarevision: revision, //redraw signal: bump this to force Plotly to re-render
-    // A constant uirevision keeps the user's zoom/pan/legend clicks across
-    // re-renders while paused; a changing one resets them to live behavior.
-    uirevision: plotsPaused ? "paused" : revision,
-    showlegend: true, //show the legend
-    legend: {
-      font: { size: 18 },
-      x: 0,
-      y: 1,
-      xanchor: "left",
-      yanchor: "top",
-      bgcolor: "255,255,255, 0.7",
-    },
-    yaxis: {
-      ...PLOT_LAYOUT_TEMPLATE.yaxis,
-      //autorange: yAxisRange ? false : true,
-      autorange: true,
-      range: yAxisRange,
-      title: { text: getYAxisTitle() },
-      //exponentformat: "e",
-      //tickformat: ".2e",
-      tickformat: "",
-    },
-    xaxis: {
-      ...PLOT_LAYOUT_TEMPLATE.xaxis,
-      type: "date",
-      tickformat: "%H:%M:%S",
-      autorange: xAxisRange ? false : true,
-      range: xAxisRange,
-    },
-
-    margin: { l: 85, r: 30, t: 10, b: 50 },
-  };
-
-  //
-
   return (
     <div className="plot-widget">
       <div className="plot-header">
@@ -656,24 +686,7 @@ export default function MultiPVPlot({ plotId, pvNames }) {
       </div>
 
       <div className="plot-container">
-        <Plot
-          data={plotData}
-          layout={plotLayout}
-          config={{
-            responsive: true,
-            displayModeBar: false,
-            displaylogo: false,
-            modeBarButtonsToRemove: ["lasso2d", "select2d"],
-            toImageButtonOptions: {
-              format: "png",
-              filename: pvNames.join("_"),
-              height: 600,
-              width: 1000,
-            },
-          }}
-          style={{ width: "100%", height: "100%" }}
-          useResizeHandler={true}
-        />
+        <div ref={plotContainerRef} className="uplot-host" />
       </div>
     </div>
   );

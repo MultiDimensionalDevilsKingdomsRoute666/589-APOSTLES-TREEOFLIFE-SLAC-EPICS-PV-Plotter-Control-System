@@ -19,15 +19,14 @@ export class DataBuffer {
     const oneHourAgo = new Date(now.getTime() - 3600000);
     const oneHourFromNow = new Date(now.getTime() + 3600000);
 
-    if (time < oneHourAgo || time > oneHourFromNow) {
+    // NaN fails both comparisons below, so check for an invalid Date explicitly.
+    if (isNaN(time.getTime()) || time < oneHourAgo || time > oneHourFromNow) {
       this.hadBadTimestamp = true;
       console.warn("⚠️ Suspicious timestamp:", {
         backend: timestamp,
-        converted: time.toISOString(),
+        converted: isNaN(time.getTime()) ? "Invalid Date" : time.toISOString(),
         now: now.toISOString(),
       });
-
-      time.setTime(Date.now());
     }
 
     const numValue =
@@ -45,7 +44,7 @@ export class DataBuffer {
     if (this.values.length <= 3) {
       console.log(`📊 Point #${this.values.length}:`, {
         backendTimestamp: timestamp,
-        jsTime: time.toISOString(),
+        jsTime: isNaN(time.getTime()) ? "Invalid Date" : time.toISOString(),
         localTime: time.toLocaleTimeString(),
         value: numValue.toExponential(2),
       });

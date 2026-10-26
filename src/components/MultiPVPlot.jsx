@@ -28,8 +28,6 @@ export default function MultiPVPlot({ plotId, pvNames }) {
   const [aliases, setAliases] = useState({});
   const badTimestampWarnedRef = useRef(false);
 
-
-
   useEffect(() => {
     fetch(`${API_BASE}/api/egus`)
       .then((res) => res.json())
@@ -109,6 +107,11 @@ export default function MultiPVPlot({ plotId, pvNames }) {
   });
 
   const buffersRef = useRef({}); // pvName -> DataBuffer
+
+  // Must come after buffersRef is declared (reading it earlier throws).
+  const anyBadTimestamp = pvNames.some(
+    (pv) => buffersRef.current[pv]?.hasBadTimestampFlag?.()
+  );
   const unsubscribersRef = useRef({}); // pvName -> unsubscribe()
   const updateTimerRef = useRef(null);
 
@@ -137,6 +140,8 @@ export default function MultiPVPlot({ plotId, pvNames }) {
   const timeSyncEnabled = usePlotStore((state) => state.timeSyncEnabled);
 
   const globalTimeWindow = usePlotStore((state) => state.globalTimeWindow);
+
+  const plotsPaused = usePlotStore((state) => state.plotsPaused);
 
   const getTraceColor = (pvName) => getPVColor(pvName);
 
@@ -246,13 +251,13 @@ export default function MultiPVPlot({ plotId, pvNames }) {
             const buf = buffersRef.current[pvName];
             if (!buf) return;
             buf.addPoint(value, timestamp);
-            if (buf.hasBadTimestampFlag() && !badTimestampWarnedRef.current){
+            if (buf.hasBadTimestampFlag() && !badTimestampWarnedRef.current) {
               badTimestampWarnedRef.current = true;
               alert(
                 `⚠️ Warning: PV "${pvName}" has an invalid timestamp ` +
-                `(earlier than 1 hour ago).\n\n` +
+                `(missing, or more than 1 hour away from the current time).\n\n` +
                 `This usually means the IOC clock is not synchronized. ` +
-                `The time axis is using data-arrival time instead of the real sample time.`
+                `The plot shows the timestamp exactly as received from the backend.`
               );
             }
             //updateLatestValue(pvName, value, timestamp);
@@ -336,7 +341,9 @@ export default function MultiPVPlot({ plotId, pvNames }) {
 
       const hasNewData = stats.latestSequence !== stats.plottedSequence;
 
-      if (hasNewData) {
+      // While paused, data keeps buffering but the plot is not redrawn.
+      // plottedSequence stays behind, so the plot catches up on resume.
+      if (hasNewData && !plotsPaused) {
         updateCount += 1;
 
         // Capture the newest sequence included in this update.
@@ -350,7 +357,8 @@ export default function MultiPVPlot({ plotId, pvNames }) {
 
         let xMin = null;
         let xMax = null;
-
+        
+        // If time sync is enabled, find the latest timestamp across all PVs
         if (timeSyncEnabled) {
           let latest = null;
 
@@ -359,13 +367,15 @@ export default function MultiPVPlot({ plotId, pvNames }) {
 
             const timestamp = buffer ? buffer.getLatestTimestamp() : null;
 
-            if (timestamp && (!latest || timestamp > latest)) {
+            // Skip invalid Dates: NaN never compares greater, so one would freeze xMax.
+            if (timestamp && !isNaN(timestamp.getTime()) && (!latest || timestamp > latest)) {
               latest = timestamp;
             }
           });
 
-          xMax = latest || new Date();
-          xMin = new Date(xMax.getTime() - globalTimeWindow * 1000);
+          xMax = latest; //xMax = latest || new Date();
+          xMin = xMax ? new Date(xMax.getTime() - globalTimeWindow * 1000) : null;
+          //xMin = new Date(xMax.getTime() - globalTimeWindow * 1000);
         }
 
         const traces = pvNames.map((pvName) => {
@@ -484,7 +494,7 @@ export default function MultiPVPlot({ plotId, pvNames }) {
 
       console.log("Plot update timer stopped");
     };
-  }, [pvNames, timeSyncEnabled, globalTimeWindow, showAlias, aliases]);
+  }, [pvNames, timeSyncEnabled, globalTimeWindow, showAlias, aliases, plotsPaused]);
 
   // Refresh the legend's status glyph as soon as connectionStatus changes,
   // rather than waiting for the next data-driven redraw above - a PV that
@@ -518,6 +528,9 @@ export default function MultiPVPlot({ plotId, pvNames }) {
   const plotLayout = {
     ...PLOT_LAYOUT_TEMPLATE, //spread the shared default layout from constants.js
     datarevision: revision, //redraw signal: bump this to force Plotly to re-render
+    // A constant uirevision keeps the user's zoom/pan/legend clicks across
+    // re-renders while paused; a changing one resets them to live behavior.
+    uirevision: plotsPaused ? "paused" : revision,
     showlegend: true, //show the legend
     legend: {
       font: { size: 18 },

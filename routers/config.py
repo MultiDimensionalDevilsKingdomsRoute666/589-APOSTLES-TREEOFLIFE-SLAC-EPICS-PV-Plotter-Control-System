@@ -133,6 +133,16 @@ async def set_egu(update: EguUpdate):
     save_config(config)
     return {"status": "ok", "egus": config["egus"]}
 
+
+@router.delete("/egus/{pv_name:path}")
+async def delete_egu(pv_name: str):
+    """remove a certain PV's EGU (back to the default)"""
+    config = load_config()
+    config.get("egus", {}).pop(pv_name, None)
+    save_config(config)
+    return {"status": "ok"}
+
+
 class LayoutUpdate(BaseModel):
     plots: list
     livePVNames: list

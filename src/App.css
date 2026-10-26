@@ -495,6 +495,16 @@ html, body {
   position: relative;
 }
 
+.value-item.value-item-alarm {
+  background: #fee2e2;
+  border-color: #ef4444;
+}
+
+.value-item.value-item-alarm .pv-value {
+  color: #b91c1c;
+  font-weight: bold;
+}
+
 .live-pv-remove {
   position: absolute;
   top: 8px;

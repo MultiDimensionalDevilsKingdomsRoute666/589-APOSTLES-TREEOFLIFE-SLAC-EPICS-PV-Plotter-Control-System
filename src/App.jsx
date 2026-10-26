@@ -6,13 +6,14 @@ import { useLiveValueStore } from "./stores/useLiveValueStore";
 import { pvConnectionPool } from "./services/PVConnectionPool";
 
 import PlotGrid from './components/PlotGrid';
-import { Plus, Trash2, Activity, Clock, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Plus, Trash2, Activity, Clock, ChevronDown, ChevronUp, X, Pause, Play } from 'lucide-react';
 import './App.css';
 import { API_BASE } from "./utils/constants";
 // Relative path: nginx proxies /api to the backend on the same origin.
 
 function LivePVValue({
   pvName,
+  threshold,
   canRemove,
   onRemove,
 }) {
@@ -22,8 +23,17 @@ function LivePVValue({
 
   const numericValue = Number(valueInfo?.value);
 
+  const aboveThreshold =
+    valueInfo != null &&
+    Number.isFinite(numericValue) &&
+    typeof threshold === "number" &&
+    numericValue > threshold;
+
   return (
-    <div className="value-item">
+    <div
+      className={`value-item${aboveThreshold ? " value-item-alarm" : ""}`}
+      title={aboveThreshold ? `Above threshold (${threshold})` : undefined}
+    >
       <div className="pv-name">
         <div className="pv-name-scroll-container">
         {pvName}
@@ -125,8 +135,16 @@ function App() {
     (state) => state.setTimeWindow
   );
 
+  const plotsPaused = usePlotStore(
+    (state) => state.plotsPaused
+  );
+
+  const togglePlotsPaused = usePlotStore(
+    (state) => state.togglePlotsPaused
+  );
+
   const livePVNames = usePlotStore(
-    (state) => state.livePVNames 
+    (state) => state.livePVNames
   );
 
   const addLivePVs = usePlotStore(
@@ -138,6 +156,20 @@ function App() {
   );
 
   const navigate = useNavigate();
+
+  // Per-PV thresholds; App remounts when returning from /config,
+  // so this always reflects the latest saved values
+  const [thresholds, setThresholds] = useState({});
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/thresholds`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => setThresholds(data || {}))
+      .catch((err) => console.error("Failed to load thresholds:", err));
+  }, []);
 
   const handleDirectToConfig = () => {
     navigate('/config');
@@ -337,6 +369,16 @@ function App() {
           {/* Vertical Separator */}
           <div className="separator"></div>
 
+          {/* Pause/resume plot redraws; data keeps buffering while paused */}
+          <button
+            className={`btn ${plotsPaused ? 'btn-success' : 'btn-secondary'}`}
+            onClick={togglePlotsPaused}
+            title={plotsPaused ? 'Resume live plot updates' : 'Freeze all plots for analysis'}
+          >
+            {plotsPaused ? <Play size={18} /> : <Pause size={18} />}
+            {plotsPaused ? 'Resume Plots' : 'Pause Plots'}
+          </button>
+
           {/* Time Synchronization Controls - Now Inline */}
 	  {/*
           <button
@@ -425,6 +467,7 @@ function App() {
               <LivePVValue
                 key={pvName}
                 pvName={pvName}
+                threshold={thresholds[pvName]}
                 canRemove={livePVNames.includes(pvName)}
                 onRemove={removeLivePV}
               />

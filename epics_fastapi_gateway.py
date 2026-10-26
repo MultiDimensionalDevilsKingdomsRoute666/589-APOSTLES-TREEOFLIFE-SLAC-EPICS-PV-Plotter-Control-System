@@ -24,6 +24,7 @@ from fastapi import Response
 import uvicorn
 
 from routers import config as config_router
+from routers import thresholds as thresholds_router
 from caproto.asyncio.client import Context
 import numpy as np
 
@@ -128,6 +129,7 @@ app = FastAPI(
 
 # Add routers 
 app.include_router(config_router.router)
+app.include_router(thresholds_router.router)
 
 # Enable CORS to allow frontend applications from different origins
 app.add_middleware(

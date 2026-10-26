@@ -23,6 +23,8 @@ function ConfigPage() {
   const [aliases, setAliases] = useState({});
 
   const [selectedEgus, setSelectedEgus] = useState({});
+  // Thresholds are kept as the raw input strings so the user can type freely
+  const [thresholds, setThresholds] = useState({});
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState("");
 
@@ -33,13 +35,32 @@ function ConfigPage() {
     }));
   };
 
-  // Load aliases and EGUs from backend on page mount
+  const handleThresholdChange = (pvName, newThreshold) => {
+    setThresholds((prev) => ({ ...prev, [pvName]: newThreshold }));
+  };
+
+  // Load aliases, EGUs and thresholds from backend on page mount
   useEffect(() => {
     // Load aliases
     fetch(`${API_BASE}/api/aliases`)
       .then((res) => res.json())
       .then((data) => setAliases(data || {}))
       .catch((err) => console.error("Failed to load aliases:", err));
+
+    // Load thresholds
+    fetch(`${API_BASE}/api/thresholds`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        const asStrings = {};
+        for (const [pvName, value] of Object.entries(data || {})) {
+          asStrings[pvName] = String(value);
+        }
+        setThresholds((prev) => ({ ...asStrings, ...prev }));
+      })
+      .catch((err) => console.error("Failed to load thresholds:", err));
 
     // Load EGUs
     fetch(`${API_BASE}/api/egus`)
@@ -62,6 +83,15 @@ function ConfigPage() {
   // Save aliases to backend
   // Backend expects one { pv_name, alias } per POST, so submit each entry
   const handleSave = async () => {
+    // Validate thresholds before saving anything
+    for (const [pvName, threshold] of Object.entries(thresholds)) {
+      const trimmed = threshold.trim();
+      if (trimmed !== "" && !Number.isFinite(Number(trimmed))) {
+        setSaveStatus(`Invalid threshold for ${pvName}`);
+        return;
+      }
+    }
+
     try {
       setSaveStatus("Saving...");
 
@@ -76,14 +106,40 @@ function ConfigPage() {
         if (!res.ok) throw new Error("Save failed");
       }
 
-      //Save EGUS
+      //Save EGUS ("default" removes the saved EGU)
       for (const [pvName, egu] of Object.entries(selectedEgus)) {
-        if (!egu || egu === "default") continue;
-        await fetch(`${API_BASE}/api/egus`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pv_name: pvName, egu }),
-        });
+        const res =
+          !egu || egu === "default"
+            ? await fetch(
+                `${API_BASE}/api/egus/${encodeURIComponent(pvName)}`,
+                { method: "DELETE" },
+              )
+            : await fetch(`${API_BASE}/api/egus`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pv_name: pvName, egu }),
+              });
+        if (!res.ok) throw new Error("Save failed");
+      }
+
+      //Save thresholds (an emptied field removes the threshold)
+      for (const [pvName, threshold] of Object.entries(thresholds)) {
+        const trimmed = threshold.trim();
+        const res =
+          trimmed === ""
+            ? await fetch(
+                `${API_BASE}/api/thresholds/${encodeURIComponent(pvName)}`,
+                { method: "DELETE" },
+              )
+            : await fetch(`${API_BASE}/api/thresholds`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  pv_name: pvName,
+                  threshold: Number(trimmed),
+                }),
+              });
+        if (!res.ok) throw new Error("Save failed");
       }
 
       setSaveStatus("Saved!");
@@ -183,6 +239,15 @@ function ConfigPage() {
                   >
                     EGU
                   </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: "8px",
+                      borderBottom: "2px solid #ccc",
+                    }}
+                  >
+                    Threshold (optional)
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -281,9 +346,26 @@ function ConfigPage() {
                             <option value="mm">mm</option>
                             <option value="deg">deg</option>
                             <option value="Volts">Volts</option>
-			    <option value="mA">mA</option>
+                            <option value="mA">mA</option>
                           </select>
                         </div>
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px",
+                          borderBottom: "2px solid #eee",
+                        }}
+                      >
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={thresholds[pvName] ?? ""}
+                          onChange={(e) =>
+                            handleThresholdChange(pvName, e.target.value)
+                          }
+                          placeholder="(no threshold)"
+                          style={{ width: "100%", padding: "4px" }}
+                        />
                       </td>
                     </tr>
                   );

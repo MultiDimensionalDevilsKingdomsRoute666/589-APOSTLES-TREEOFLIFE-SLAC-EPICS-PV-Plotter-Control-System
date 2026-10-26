@@ -38,6 +38,18 @@ export const usePlotStore = create(
         console.log(`Time sync: ${get().timeSyncEnabled ? "ON" : "OFF"}`);
       },
 
+      // Pause/resume plot redraws (data keeps buffering while paused).
+      // Not persisted, so a page reload always starts live.
+      plotsPaused: false,
+
+      togglePlotsPaused: () => {
+        set((state) => ({
+          plotsPaused: !state.plotsPaused,
+        }));
+
+        console.log(`Plots: ${get().plotsPaused ? "PAUSED" : "LIVE"}`);
+      },
+
       // Set the global time window in seconds
       setTimeWindow: (seconds) => {
         set({

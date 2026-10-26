@@ -1,0 +1,12 @@
+{
+  "aliases": {},
+  "egus": {},
+  "thresholds": {},
+  "layouts": {
+    "default": {
+      "plots": [],
+      "livePVNames": [],
+      "globalTimeWindow": 60
+    }
+  }
+}

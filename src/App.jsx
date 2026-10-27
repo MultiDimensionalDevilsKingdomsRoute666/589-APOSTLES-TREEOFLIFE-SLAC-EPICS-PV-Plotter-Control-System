@@ -170,6 +170,25 @@ function App() {
   // so this always reflects the latest saved values
   const [thresholds, setThresholds] = useState({});
 
+  // Auto-load the standard config on startup when no layout was restored
+  // from localStorage (rehydration is synchronous, so plots is already set)
+  useEffect(() => {
+    if (usePlotStore.getState().plots.length > 0) return;
+
+    fetch(`${API_BASE}/api/config`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        const layout = data?.layouts?.default;
+        if (layout?.plots?.length > 0) {
+          usePlotStore.getState().loadLayout(layout);
+        }
+      })
+      .catch((err) => console.error("Failed to load standard config:", err));
+  }, []);
+
   useEffect(() => {
     fetch(`${API_BASE}/api/thresholds`)
       .then((res) => {

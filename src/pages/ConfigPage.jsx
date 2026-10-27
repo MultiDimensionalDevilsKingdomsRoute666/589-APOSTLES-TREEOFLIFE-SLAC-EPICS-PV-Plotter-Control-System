@@ -23,7 +23,8 @@ function ConfigPage() {
   const [aliases, setAliases] = useState({});
 
   const [selectedEgus, setSelectedEgus] = useState({});
-  // Thresholds are kept as the raw input strings so the user can type freely
+  // Thresholds are kept as raw input strings ({ upper, lower } per PV)
+  // so the user can type freely
   const [thresholds, setThresholds] = useState({});
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState("");
@@ -35,8 +36,12 @@ function ConfigPage() {
     }));
   };
 
-  const handleThresholdChange = (pvName, newThreshold) => {
-    setThresholds((prev) => ({ ...prev, [pvName]: newThreshold }));
+  // bound is "upper" or "lower"
+  const handleThresholdChange = (pvName, bound, newThreshold) => {
+    setThresholds((prev) => ({
+      ...prev,
+      [pvName]: { upper: "", lower: "", ...prev[pvName], [bound]: newThreshold },
+    }));
   };
 
   // Load aliases, EGUs and thresholds from backend on page mount
@@ -56,7 +61,10 @@ function ConfigPage() {
       .then((data) => {
         const asStrings = {};
         for (const [pvName, value] of Object.entries(data || {})) {
-          asStrings[pvName] = String(value);
+          asStrings[pvName] = {
+            upper: value?.upper != null ? String(value.upper) : "",
+            lower: value?.lower != null ? String(value.lower) : "",
+          };
         }
         setThresholds((prev) => ({ ...asStrings, ...prev }));
       })
@@ -84,10 +92,23 @@ function ConfigPage() {
   // Backend expects one { pv_name, alias } per POST, so submit each entry
   const handleSave = async () => {
     // Validate thresholds before saving anything
-    for (const [pvName, threshold] of Object.entries(thresholds)) {
-      const trimmed = threshold.trim();
-      if (trimmed !== "" && !Number.isFinite(Number(trimmed))) {
-        setSaveStatus(`Invalid threshold for ${pvName}`);
+    for (const [pvName, { upper, lower }] of Object.entries(thresholds)) {
+      const upperTrimmed = upper.trim();
+      const lowerTrimmed = lower.trim();
+      if (upperTrimmed !== "" && !Number.isFinite(Number(upperTrimmed))) {
+        setSaveStatus(`Invalid upper threshold for ${pvName}`);
+        return;
+      }
+      if (lowerTrimmed !== "" && !Number.isFinite(Number(lowerTrimmed))) {
+        setSaveStatus(`Invalid lower threshold for ${pvName}`);
+        return;
+      }
+      if (
+        upperTrimmed !== "" &&
+        lowerTrimmed !== "" &&
+        Number(lowerTrimmed) > Number(upperTrimmed)
+      ) {
+        setSaveStatus(`Lower threshold exceeds upper threshold for ${pvName}`);
         return;
       }
     }
@@ -122,11 +143,12 @@ function ConfigPage() {
         if (!res.ok) throw new Error("Save failed");
       }
 
-      //Save thresholds (an emptied field removes the threshold)
-      for (const [pvName, threshold] of Object.entries(thresholds)) {
-        const trimmed = threshold.trim();
+      //Save thresholds (emptying both fields removes the thresholds)
+      for (const [pvName, { upper, lower }] of Object.entries(thresholds)) {
+        const upperTrimmed = upper.trim();
+        const lowerTrimmed = lower.trim();
         const res =
-          trimmed === ""
+          upperTrimmed === "" && lowerTrimmed === ""
             ? await fetch(
                 `${API_BASE}/api/thresholds/${encodeURIComponent(pvName)}`,
                 { method: "DELETE" },
@@ -136,7 +158,8 @@ function ConfigPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   pv_name: pvName,
-                  threshold: Number(trimmed),
+                  upper: upperTrimmed === "" ? null : Number(upperTrimmed),
+                  lower: lowerTrimmed === "" ? null : Number(lowerTrimmed),
                 }),
               });
         if (!res.ok) throw new Error("Save failed");
@@ -189,7 +212,7 @@ function ConfigPage() {
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                maxWidth: "800px",
+                maxWidth: "1100px",
               }}
             >
               <thead>
@@ -235,6 +258,7 @@ function ConfigPage() {
                       textAlign: "left",
                       padding: "8px",
                       borderBottom: "2px solid #ccc",
+                      minWidth: "160px",
                     }}
                   >
                     EGU
@@ -246,7 +270,16 @@ function ConfigPage() {
                       borderBottom: "2px solid #ccc",
                     }}
                   >
-                    Threshold (optional)
+                    Lower Threshold (optional)
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: "8px",
+                      borderBottom: "2px solid #ccc",
+                    }}
+                  >
+                    Upper Threshold (optional)
                   </th>
                 </tr>
               </thead>
@@ -359,11 +392,36 @@ function ConfigPage() {
                         <input
                           type="text"
                           inputMode="decimal"
-                          value={thresholds[pvName] ?? ""}
+                          value={thresholds[pvName]?.lower ?? ""}
                           onChange={(e) =>
-                            handleThresholdChange(pvName, e.target.value)
+                            handleThresholdChange(
+                              pvName,
+                              "lower",
+                              e.target.value,
+                            )
                           }
-                          placeholder="(no threshold)"
+                          placeholder="(no lower)"
+                          style={{ width: "100%", padding: "4px" }}
+                        />
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px",
+                          borderBottom: "2px solid #eee",
+                        }}
+                      >
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={thresholds[pvName]?.upper ?? ""}
+                          onChange={(e) =>
+                            handleThresholdChange(
+                              pvName,
+                              "upper",
+                              e.target.value,
+                            )
+                          }
+                          placeholder="(no upper)"
                           style={{ width: "100%", padding: "4px" }}
                         />
                       </td>

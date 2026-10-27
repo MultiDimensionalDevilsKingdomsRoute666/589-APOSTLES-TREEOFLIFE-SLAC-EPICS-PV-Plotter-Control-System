@@ -464,12 +464,24 @@ export default function MultiPVPlot({ plotId, pvNames }) {
           value: formatValue,
         })),
       ],
+      // The legend is built by uPlot outside React, so it can't contain React components.
       legend: {
         markers: { width: 2 },
       },
       cursor: {
         // Drag horizontally to zoom the time axis; double-click to reset.
         drag: { x: true, y: false },
+      },
+      hooks: {
+        // The next live redraw rescales the axes and would undo a drag
+        // zoom, so zooming pauses all plots. The user resumes manually.
+        setSelect: [
+          (u) => {
+            if (u.select.width > 0) {
+              usePlotStore.getState().setPlotsPaused(true);
+            }
+          },
+        ],
       },
     };
 
@@ -512,7 +524,9 @@ export default function MultiPVPlot({ plotId, pvNames }) {
 
       // While paused, data keeps buffering but the plot is not redrawn.
       // plottedSequence stays behind, so the plot catches up on resume.
-      if (hasNewData && !plotsPaused && plot) {
+      // Read the store directly: a zoom pauses from a uPlot hook, and a tick
+      // may run before React re-renders with the new plotsPaused.
+      if (hasNewData && !usePlotStore.getState().plotsPaused && plot) {
         // Capture the newest sequence included in this update.
         const sequenceBeingPlotted = stats.latestSequence;
 

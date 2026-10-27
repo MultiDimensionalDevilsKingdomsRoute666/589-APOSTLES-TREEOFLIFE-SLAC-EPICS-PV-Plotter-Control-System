@@ -50,6 +50,14 @@ export const usePlotStore = create(
         console.log(`Plots: ${get().plotsPaused ? "PAUSED" : "LIVE"}`);
       },
 
+      setPlotsPaused: (paused) => {
+        if (get().plotsPaused === paused) return;
+
+        set({ plotsPaused: paused });
+
+        console.log(`Plots: ${paused ? "PAUSED" : "LIVE"}`);
+      },
+
       // Set the global time window in seconds
       setTimeWindow: (seconds) => {
         set({

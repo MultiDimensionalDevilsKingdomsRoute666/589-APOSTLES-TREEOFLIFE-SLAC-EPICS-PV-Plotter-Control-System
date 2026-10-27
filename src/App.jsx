@@ -13,6 +13,7 @@ import { API_BASE } from "./utils/constants";
 
 function LivePVValue({
   pvName,
+  displayName,
   threshold,
   canRemove,
   onRemove,
@@ -23,20 +24,28 @@ function LivePVValue({
 
   const numericValue = Number(valueInfo?.value);
 
+  const upper = threshold?.upper;
+  const lower = threshold?.lower;
+  const hasValue = valueInfo != null && Number.isFinite(numericValue);
+
   const aboveThreshold =
-    valueInfo != null &&
-    Number.isFinite(numericValue) &&
-    typeof threshold === "number" &&
-    numericValue > threshold;
+    hasValue && typeof upper === "number" && numericValue > upper;
+  const belowThreshold =
+    hasValue && typeof lower === "number" && numericValue < lower;
+  const outOfRange = aboveThreshold || belowThreshold;
+
+  let alarmTitle;
+  if (aboveThreshold) alarmTitle = `Above upper threshold (${upper})`;
+  else if (belowThreshold) alarmTitle = `Below lower threshold (${lower})`;
 
   return (
     <div
-      className={`value-item${aboveThreshold ? " value-item-alarm" : ""}`}
-      title={aboveThreshold ? `Above threshold (${threshold})` : undefined}
+      className={`value-item${outOfRange ? " value-item-alarm" : ""}`}
+      title={alarmTitle}
     >
       <div className="pv-name">
         <div className="pv-name-scroll-container">
-        {pvName}
+        {displayName}
         </div>
         </div>
 
@@ -157,7 +166,7 @@ function App() {
 
   const navigate = useNavigate();
 
-  // Per-PV thresholds; App remounts when returning from /config,
+  // Per-PV { upper, lower } thresholds; App remounts when returning from /config,
   // so this always reflects the latest saved values
   const [thresholds, setThresholds] = useState({});
 
@@ -170,6 +179,24 @@ function App() {
       .then((data) => setThresholds(data || {}))
       .catch((err) => console.error("Failed to load thresholds:", err));
   }, []);
+
+  // PV aliases for the Live PV Values panel, toggled like the plot legend
+  const [aliases, setAliases] = useState({});
+  const [showAlias, setShowAlias] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/aliases`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => setAliases(data || {}))
+      .catch((err) => console.error("Failed to load aliases:", err));
+  }, []);
+
+  // Alias if enabled and available, else the raw PV name
+  const getDisplayName = (pvName) =>
+    showAlias && aliases[pvName] ? aliases[pvName] : pvName;
 
   const handleDirectToConfig = () => {
     navigate('/config');
@@ -459,7 +486,15 @@ function App() {
 
         <div className="right-sidebar">
           <div className="sidebar-header">
-            Live PV Values ({displayedPVNames.length})
+            <span>Live PV Values ({displayedPVNames.length})</span>
+            <button
+              type="button"
+              className="btn btn-secondary sidebar-alias-toggle"
+              onClick={() => setShowAlias((prev) => !prev)}
+              title="Toggle live values between alias and PV name"
+            >
+              {showAlias ? "Show PV Names" : "Show Aliases"}
+            </button>
           </div>
         
           <div className="sidebar-content">
@@ -467,6 +502,7 @@ function App() {
               <LivePVValue
                 key={pvName}
                 pvName={pvName}
+                displayName={getDisplayName(pvName)}
                 threshold={thresholds[pvName]}
                 canRemove={livePVNames.includes(pvName)}
                 onRemove={removeLivePV}

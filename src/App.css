@@ -394,11 +394,21 @@ html, body {
 }
 
 .sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   padding: 1rem;
   border-bottom: 1px solid #dee2e6;
   font-weight: 600;
   color: #333;
   background: #f8f9fa;
+}
+
+.sidebar-alias-toggle {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
 }
 .sidebar-content {
   display: grid;

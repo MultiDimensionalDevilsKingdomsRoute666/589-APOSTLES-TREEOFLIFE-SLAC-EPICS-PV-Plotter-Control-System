@@ -380,6 +380,7 @@ function ConfigPage() {
                             <option value="deg">deg</option>
                             <option value="Volts">Volts</option>
                             <option value="mA">mA</option>
+                            <option value="Counts">Counts</option>
                           </select>
                         </div>
                       </td>

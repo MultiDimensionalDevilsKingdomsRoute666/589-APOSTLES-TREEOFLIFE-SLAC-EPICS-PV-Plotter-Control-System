@@ -40,7 +40,13 @@ class PVConnectionPool {
         },
 
         // Distribute connection errors to all subscribers.
+        // The cached value can no longer be trusted, so drop it
+        // until a fresh sample arrives.
         (error) => {
+          useLiveValueStore
+            .getState()
+            .removeLatestValue(pvName);
+
           subscribers.forEach((subscriber) => {
             subscriber.onError?.(error);
           });
@@ -50,6 +56,18 @@ class PVConnectionPool {
         () => {
           subscribers.forEach((subscriber) => {
             subscriber.onConnect?.();
+          });
+        },
+
+        // Unexpected close: drop the cached value and notify
+        // subscribers while the connection reconnects.
+        () => {
+          useLiveValueStore
+            .getState()
+            .removeLatestValue(pvName);
+
+          subscribers.forEach((subscriber) => {
+            subscriber.onDisconnect?.();
           });
         }
       );
@@ -72,6 +90,7 @@ class PVConnectionPool {
       onData: callbacks.onData,
       onError: callbacks.onError,
       onConnect: callbacks.onConnect,
+      onDisconnect: callbacks.onDisconnect,
     };
 
     entry.subscribers.add(subscriber);

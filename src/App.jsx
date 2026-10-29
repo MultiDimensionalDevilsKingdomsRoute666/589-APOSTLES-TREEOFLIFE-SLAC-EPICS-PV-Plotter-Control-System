@@ -6,6 +6,7 @@ import { useLiveValueStore } from "./stores/useLiveValueStore";
 import { pvConnectionPool } from "./services/PVConnectionPool";
 
 import PlotGrid from './components/PlotGrid';
+import BeamlineStatus from './components/BeamlineStatus';
 import { Plus, Trash2, Activity, Clock, ChevronDown, ChevronUp, X, Pause, Play } from 'lucide-react';
 import './App.css';
 import { API_BASE } from "./utils/constants";
@@ -497,9 +498,18 @@ function App() {
         //minHeight: 'calc(100vh - 80px)'   // adjust the height
       }}>
       
-        {/* Plot */}
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <PlotGrid />
+        {/* Beamline status + Plot */}
+        <div style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}>
+          <BeamlineStatus />
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <PlotGrid />
+          </div>
         </div>
 
 

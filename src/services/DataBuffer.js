@@ -19,8 +19,18 @@ export class DataBuffer {
     const oneHourAgo = new Date(now.getTime() - 3600000);
     const oneHourFromNow = new Date(now.getTime() + 3600000);
 
+    // The first point after subscribing is the PV's current value, stamped
+    // when the record last processed. For slow or static PVs (gains, setpoints)
+    // that can be days old and is still correct, so skip the "too old" check.
+    const isInitialValue = this.totalPointsReceived === 1;
+    const tooOld = !isInitialValue && time < oneHourAgo;
+
+    // EPICS time 0 (1990-01-01, Unix 631152000) means "undefined", e.g. a
+    // CA gateway that never received the IOC's timestamp. Always invalid.
+    const isUndefinedEpicsTime = timestamp <= 631152000;
+
     // NaN fails both comparisons below, so check for an invalid Date explicitly.
-    if (isNaN(time.getTime()) || time < oneHourAgo || time > oneHourFromNow) {
+    if (isNaN(time.getTime()) || isUndefinedEpicsTime || tooOld || time > oneHourFromNow) {
       this.hadBadTimestamp = true;
       console.warn("⚠️ Suspicious timestamp:", {
         backend: timestamp,

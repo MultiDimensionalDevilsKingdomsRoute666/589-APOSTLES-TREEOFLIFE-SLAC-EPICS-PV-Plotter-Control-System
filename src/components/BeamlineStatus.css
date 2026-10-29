@@ -1,0 +1,61 @@
+/* src/components/BeamlineStatus.css */
+
+.beamline-status-panel {
+  flex-shrink: 0;
+  margin: 1rem 1rem 0;
+  padding: 0.5rem 0.75rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+}
+
+.beamline-status-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.beamline-status-table th,
+.beamline-status-table td {
+  padding: 0.35rem 0.25rem;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.beamline-status-table th {
+  width: 90px;
+  font-weight: 600;
+  color: #4b5563;
+  background: #f8f9fa;
+  text-align: left;
+}
+
+.beamline-status-table td {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.beamline-light {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  vertical-align: middle;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.beamline-light-open {
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.beamline-light-closed {
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+}
+
+.beamline-light-unknown {
+  background: #cbd5e1;
+}

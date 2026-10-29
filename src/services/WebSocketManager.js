@@ -4,13 +4,14 @@
 import { WS_CONFIG } from "../utils/constants";
 
 export class PVWebSocket {
-  constructor(pvName, onData, onError, onConnect) {
+  constructor(pvName, onData, onError, onConnect, onClose) {
     this.pvName = pvName;
 
     // Callback functions (separation of transport and handling)
     this.onData = onData;       // called when data is received
     this.onError = onError;     // called when an error happens
     this.onConnect = onConnect; // called when the connection is opened
+    this.onClose = onClose;     // called when the connection closes unexpectedly
 
     this.ws = null;
     this.reconnectAttempts = 0;
@@ -89,6 +90,7 @@ export class PVWebSocket {
         );
         // Only auto-reconnect if the close was NOT intentional.
         if (this.shouldReconnect) {
+          if (this.onClose) this.onClose();
           this.attemptReconnect();
         }
       };

@@ -10,12 +10,14 @@ import BeamlineStatus from './components/BeamlineStatus';
 import { Plus, Trash2, Activity, Clock, ChevronDown, ChevronUp, X, Pause, Play } from 'lucide-react';
 import './App.css';
 import { API_BASE } from "./utils/constants";
+import { formatPVValue } from "./utils/valueFormat";
 // Relative path: nginx proxies /api to the backend on the same origin.
 
 function LivePVValue({
   pvName,
   displayName,
   threshold,
+  valueFormat,
   canRemove,
   onRemove,
 }) {
@@ -52,7 +54,7 @@ function LivePVValue({
 
       <div className="pv-value">        
         {valueInfo && Number.isFinite(numericValue)
-          ? numericValue.toFixed(5)
+          ? formatPVValue(numericValue, valueFormat, (v) => v.toFixed(5))
           : "---"}                
       </div>
 
@@ -198,6 +200,19 @@ function App() {
       })
       .then((data) => setThresholds(data || {}))
       .catch((err) => console.error("Failed to load thresholds:", err));
+  }, []);
+
+  // Per-PV "regular" / "exponential" value format for the Live PV Values panel
+  const [valueFormats, setValueFormats] = useState({});
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/value-formats`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => setValueFormats(data || {}))
+      .catch((err) => console.error("Failed to load value formats:", err));
   }, []);
 
   // PV aliases for the Live PV Values panel, toggled like the plot legend
@@ -533,6 +548,7 @@ function App() {
                 pvName={pvName}
                 displayName={getDisplayName(pvName)}
                 threshold={thresholds[pvName]}
+                valueFormat={valueFormats[pvName]}
                 canRemove={livePVNames.includes(pvName)}
                 onRemove={removeLivePV}
               />

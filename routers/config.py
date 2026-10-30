@@ -8,7 +8,7 @@ import errno
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Literal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -139,6 +139,38 @@ async def delete_egu(pv_name: str):
     """remove a certain PV's EGU (back to the default)"""
     config = load_config()
     config.get("egus", {}).pop(pv_name, None)
+    save_config(config)
+    return {"status": "ok"}
+
+
+# ---------- value formats ("regular" / "exponential") ----------
+
+@router.get("/value-formats")
+async def get_value_formats():
+    """get all value format settings"""
+    return load_config().get("value_formats", {})
+
+
+class ValueFormatUpdate(BaseModel):
+    pv_name: str
+    value_format: Literal["regular", "exponential"]
+
+
+@router.post("/value-formats")
+async def set_value_format(update: ValueFormatUpdate):
+    """set/update a single PV's value format"""
+    config = load_config()
+    config.setdefault("value_formats", {})
+    config["value_formats"][update.pv_name] = update.value_format
+    save_config(config)
+    return {"status": "ok", "value_formats": config["value_formats"]}
+
+
+@router.delete("/value-formats/{pv_name:path}")
+async def delete_value_format(pv_name: str):
+    """remove a certain PV's value format (back to regular)"""
+    config = load_config()
+    config.get("value_formats", {}).pop(pv_name, None)
     save_config(config)
     return {"status": "ok"}
 

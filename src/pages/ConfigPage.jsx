@@ -26,6 +26,8 @@ function ConfigPage() {
   // Thresholds are kept as raw input strings ({ upper, lower } per PV)
   // so the user can type freely
   const [thresholds, setThresholds] = useState({});
+  // "regular" or "exponential" per PV (missing means regular)
+  const [valueFormats, setValueFormats] = useState({});
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState("");
 
@@ -42,6 +44,10 @@ function ConfigPage() {
       ...prev,
       [pvName]: { upper: "", lower: "", ...prev[pvName], [bound]: newThreshold },
     }));
+  };
+
+  const handleValueFormatChange = (pvName, newFormat) => {
+    setValueFormats((prev) => ({ ...prev, [pvName]: newFormat }));
   };
 
   // Load aliases, EGUs and thresholds from backend on page mount
@@ -69,6 +75,15 @@ function ConfigPage() {
         setThresholds((prev) => ({ ...asStrings, ...prev }));
       })
       .catch((err) => console.error("Failed to load thresholds:", err));
+
+    // Load value formats
+    fetch(`${API_BASE}/api/value-formats`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => setValueFormats((prev) => ({ ...(data || {}), ...prev })))
+      .catch((err) => console.error("Failed to load value formats:", err));
 
     // Load EGUs
     fetch(`${API_BASE}/api/egus`)
@@ -162,6 +177,25 @@ function ConfigPage() {
                   lower: lowerTrimmed === "" ? null : Number(lowerTrimmed),
                 }),
               });
+        if (!res.ok) throw new Error("Save failed");
+      }
+
+      //Save value formats ("regular" removes the saved format)
+      for (const [pvName, valueFormat] of Object.entries(valueFormats)) {
+        const res =
+          valueFormat === "exponential"
+            ? await fetch(`${API_BASE}/api/value-formats`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  pv_name: pvName,
+                  value_format: valueFormat,
+                }),
+              })
+            : await fetch(
+                `${API_BASE}/api/value-formats/${encodeURIComponent(pvName)}`,
+                { method: "DELETE" },
+              );
         if (!res.ok) throw new Error("Save failed");
       }
 
@@ -280,6 +314,16 @@ function ConfigPage() {
                     }}
                   >
                     Upper Threshold (optional)
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: "8px",
+                      borderBottom: "2px solid #ccc",
+                      minWidth: "130px",
+                    }}
+                  >
+                    Value Format
                   </th>
                 </tr>
               </thead>
@@ -425,6 +469,24 @@ function ConfigPage() {
                           placeholder="(no upper)"
                           style={{ width: "100%", padding: "4px" }}
                         />
+                      </td>
+                      <td
+                        style={{
+                          padding: "8px",
+                          borderBottom: "2px solid #eee",
+                        }}
+                      >
+                        <select
+                          id={`value-format-${pvName}`}
+                          value={valueFormats[pvName] || "regular"}
+                          onChange={(e) =>
+                            handleValueFormatChange(pvName, e.target.value)
+                          }
+                          style={{ width: "100%", padding: "4px" }}
+                        >
+                          <option value="regular">Regular</option>
+                          <option value="exponential">Exponential</option>
+                        </select>
                       </td>
                     </tr>
                   );

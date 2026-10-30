@@ -13,6 +13,11 @@ import {
   getPVColor,
 } from "../utils/constants";
 import { usePlotStore } from "../stores/usePlotStore";
+import {
+  isExponential,
+  formatPVValue,
+  formatExponentialTick,
+} from "../utils/valueFormat";
 import "./MultiPVPlot.css";
 
 // Relative path: nginx proxies /api to the backend on the same origin.
@@ -24,9 +29,10 @@ export default function MultiPVPlot({ plotId, pvNames }) {
 
   const [displayText, setDisplayText] = useState("");
 
-  //Load Aliases and  EGU from backend
+  //Load Aliases, EGU and value formats from backend
   const [egus, setEgus] = useState({});
   const [aliases, setAliases] = useState({});
+  const [valueFormats, setValueFormats] = useState({});
   const badTimestampWarnedRef = useRef(false);
 
   useEffect(() => {
@@ -34,6 +40,11 @@ export default function MultiPVPlot({ plotId, pvNames }) {
       .then((res) => res.json())
       .then((data) => setEgus(data || {}))
       .catch((err) => console.error("Failed to load EGUs:", err));
+
+    fetch(`${API_BASE}/api/value-formats`)
+      .then((res) => res.json())
+      .then((data) => setValueFormats(data || {}))
+      .catch((err) => console.error("Failed to load value formats:", err));
 
     fetch(`${API_BASE}/api/aliases`)
       .then((res) => res.json())
@@ -407,6 +418,9 @@ export default function MultiPVPlot({ plotId, pvNames }) {
     buildTraceName(pvName, connectionStatus[pvName]),
   );
   const yAxisTitle = getYAxisTitle();
+  // One shared Y axis: exponential ticks if any PV on this plot is exponential
+  const seriesFormats = pvNames.map((pvName) => valueFormats[pvName]);
+  const yAxisExponential = seriesFormats.some(isExponential);
 
   // Effect 2: create the uPlot instance.
   // uPlot series and axis labels are fixed at creation time, so the plot is
@@ -434,8 +448,9 @@ export default function MultiPVPlot({ plotId, pvNames }) {
         height: Math.max(container.clientHeight - (legend?.offsetHeight ?? 0), 1),
       };
     };
-    const formatValue = (u, value) =>
-      value == null ? "--" : String(Number(value.toPrecision(6)));
+    const formatRegular = (value) => String(Number(value.toPrecision(6)));
+    const formatValue = (format) => (u, value) =>
+      value == null ? "--" : formatPVValue(value, format, formatRegular);
 
     const options = {
       ...getPlotSize(null),
@@ -455,6 +470,9 @@ export default function MultiPVPlot({ plotId, pvNames }) {
           label: yAxisTitle,
           font: `16px ${PLOT_THEME.fontFamily}`, // Y tick label size
           size: 85, // wider axis so the larger tick labels fit
+          ...(yAxisExponential && {
+            values: (u, splits) => splits.map(formatExponentialTick),
+          }),
         },
       ],
       series: [
@@ -468,7 +486,7 @@ export default function MultiPVPlot({ plotId, pvNames }) {
           width: PLOT_THEME.lineWidth,
           spanGaps: true,
           points: { show: false },
-          value: formatValue,
+          value: formatValue(seriesFormats[index]),
         })),
       ],
       // The legend is built by uPlot outside React, so it can't contain React components.
@@ -517,7 +535,12 @@ export default function MultiPVPlot({ plotId, pvNames }) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pvNames, seriesLabels.join("\u0000"), yAxisTitle]);
+  }, [
+    pvNames,
+    seriesLabels.join("\u0000"),
+    yAxisTitle,
+    seriesFormats.join("\u0000"),
+  ]);
 
   // Effect 3: periodic plot redraw
   useEffect(() => {

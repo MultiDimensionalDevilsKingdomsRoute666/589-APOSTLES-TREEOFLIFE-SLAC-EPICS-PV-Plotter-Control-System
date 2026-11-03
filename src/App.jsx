@@ -7,7 +7,7 @@ import { pvConnectionPool } from "./services/PVConnectionPool";
 
 import PlotGrid from './components/PlotGrid';
 import BeamlineStatus from './components/BeamlineStatus';
-import { Plus, Trash2, Activity, Clock, ChevronDown, ChevronUp, X, Pause, Play } from 'lucide-react';
+import { Plus, Trash2, Activity, Clock, ChevronDown, ChevronUp, X, Pause, Play, Eye, EyeOff } from 'lucide-react';
 import './App.css';
 import { API_BASE } from "./utils/constants";
 import { formatPVValue } from "./utils/valueFormat";
@@ -168,6 +168,9 @@ function App() {
   );
 
   const navigate = useNavigate();
+
+  // Beamline status table is hidden by default; the user can click to show it
+  const [showBeamlineStatus, setShowBeamlineStatus] = useState(false);
 
   // Per-PV { upper, lower } thresholds; App remounts when returning from /config,
   // so this always reflects the latest saved values
@@ -441,6 +444,16 @@ function App() {
             {plotsPaused ? 'Resume Plots' : 'Pause Plots'}
           </button>
 
+          {/* Show/hide the Beamline Status table (hidden by default) */}
+          <button
+            className={`btn ${showBeamlineStatus ? 'btn-success' : 'btn-secondary'}`}
+            onClick={() => setShowBeamlineStatus((prev) => !prev)}
+            title={showBeamlineStatus ? 'Hide beamline status table' : 'Show beamline status table'}
+          >
+            {showBeamlineStatus ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showBeamlineStatus ? 'Hide Beamline Status' : 'Show Beamline Status'}
+          </button>
+
           {/* Time Synchronization Controls - Now Inline */}
 	  {/*
           <button
@@ -521,7 +534,7 @@ function App() {
           flexDirection: 'column',
           overflow: 'hidden',
         }}>
-          <BeamlineStatus />
+          {showBeamlineStatus && <BeamlineStatus />}
           <div style={{ flex: 1, overflow: 'auto' }}>
             <PlotGrid />
           </div>
